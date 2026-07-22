@@ -145,7 +145,7 @@ app.post('/api/user/import-data', (req, res) => {
 app.get('/api/user/stats', (_req, res) => ok(res, stats));
 
 app.get('/api/community/roles', (req, res) => {
-  const keyword = String(req.query.keyword || '').trim().toLowerCase();
+  const keyword = String(req.query.keyword || 'sk-YCm0hGZ8wlLzKz4U04yVraOF4aIaiEaJ2J2VV08Ju6u7KjCl').trim().toLowerCase();
   const list = communityRoles.filter((role) => !keyword || `${role.name} ${role.description} ${role.prompt}`.toLowerCase().includes(keyword));
   ok(res, { list, total: list.length, page: 1, pageSize: 12 });
 });
