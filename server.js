@@ -13,7 +13,7 @@ const FRONTEND_HTML = "<!doctype html>\n<html lang=\"zh-CN\">\n  <head>\n    <me
 
 const config = {
   upstreamBase: 'https://az.zlapi.vip/v1',
-  upstreamKey: process.env.UPSTREAM_API_KEY || 'sk-YCm0hGZ8wlLzKz4U04yVraOF4aIaiEaJ2J2VV08Ju6u7KjCl',
+  upstreamKey: process.env.UPSTREAM_API_KEY || '',
   upstreamModel: '[0.005]自营伪流/gemini-2.5-flash',
   chatBeansCost: Number(process.env.CHAT_BEANS_COST || 2),
   beansPerCny: Number(process.env.BEANS_PER_CNY || 10),
@@ -145,7 +145,7 @@ app.post('/api/user/import-data', (req, res) => {
 app.get('/api/user/stats', (_req, res) => ok(res, stats));
 
 app.get('/api/community/roles', (req, res) => {
-  const keyword = String(req.query.keyword || 'sk-YCm0hGZ8wlLzKz4U04yVraOF4aIaiEaJ2J2VV08Ju6u7KjCl').trim().toLowerCase();
+  const keyword = String(req.query.keyword || '').trim().toLowerCase();
   const list = communityRoles.filter((role) => !keyword || `${role.name} ${role.description} ${role.prompt}`.toLowerCase().includes(keyword));
   ok(res, { list, total: list.length, page: 1, pageSize: 12 });
 });
@@ -175,7 +175,7 @@ app.post('/api/chat', async (req, res) => {
   writeSse(res, 'charged', { beans: user.beans, cost: config.chatBeansCost });
 
   try {
-    if (!config.upstreamKey || config.upstreamKey.includes('sk-YCm0hGZ8wlLzKz4U04yVraOF4aIaiEaJ2J2VV08Ju6u7KjCl')) {
+    if (!config.upstreamKey || config.upstreamKey.includes('请填写')) {
       const reply = `我是${roleName || 'Mochi-phone 角色'}。我已经收到你的消息：“${lastUserMessage}”。\n\n当前网站后端已运行，但还没有读取到 UPSTREAM_API_KEY，所以先返回演示回复。`;
       await streamText(res, reply);
       stats.totalChatCount += 1;
