@@ -50,7 +50,7 @@ npm start
 | `DATABASE_URL` | PostgreSQL 连接串 | 自动（Render） |
 | `UPSTREAM_API_BASE` | 上游 AI API 地址 | https://us.noviapi.com/v1 |
 | `UPSTREAM_API_KEY` | 上游 API 密钥 | sk-qhCYj6vb0pJsIKxhTMPmMaigtrh8y9saYrxRQEMrfqT2ZsoP|
-| `UPSTREAM_MODEL` | 使用的模型名称 | gpt-4o-mini |
+| `UPSTREAM_MODEL` | 使用的模型名称 |[次-流抗截]gemini-3.1-pro-preview|
 | `CHAT_BEANS_COST` | 单次对话消耗豆子 | 2 |
 | `DEMO_INITIAL_BEANS` | 新用户初始豆子 | 30 |
 
