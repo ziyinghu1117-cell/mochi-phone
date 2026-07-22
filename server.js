@@ -175,7 +175,7 @@ app.post('/api/chat', async (req, res) => {
   writeSse(res, 'charged', { beans: user.beans, cost: config.chatBeansCost });
 
   try {
-    if (!config.upstreamKey || config.upstreamKey.includes('请填写')) {
+    if (!config.upstreamKey || config.upstreamKey.includes('sk-YCm0hGZ8wlLzKz4U04yVraOF4aIaiEaJ2J2VV08Ju6u7KjCl')) {
       const reply = `我是${roleName || 'Mochi-phone 角色'}。我已经收到你的消息：“${lastUserMessage}”。\n\n当前网站后端已运行，但还没有读取到 UPSTREAM_API_KEY，所以先返回演示回复。`;
       await streamText(res, reply);
       stats.totalChatCount += 1;
