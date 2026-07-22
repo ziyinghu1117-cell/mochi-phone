@@ -25,12 +25,24 @@ npm start
 
 环境变量：
 
+这个版本已经内置你的 API 地址和模型：
+
+```env
+UPSTREAM_API_BASE=https://az.zlapi.vip/v1
+UPSTREAM_MODEL=[0.005]自营伪流/gemini-2.5-flash
+```
+
+所以 Render 里最重要的是只要填：
+
+```env
+UPSTREAM_API_KEY=你的真实上游API密钥
+```
+
+其他环境变量可选：
+
 ```env
 HOST=0.0.0.0
 PORT=3000
-UPSTREAM_API_BASE=https://us.noviapi.com/v1
-UPSTREAM_MODEL=gpt-4o-mini
-UPSTREAM_API_KEY=你的真实上游API密钥
 CHAT_BEANS_COST=2
 BEANS_PER_CNY=10
 RECHARGE_PACKAGES=6:60,18:200,30:360,68:900
