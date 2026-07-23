@@ -199,6 +199,7 @@ app.post('/api/chat', async (req, res) => {
     if (!upstreamResponse.ok || !upstreamResponse.body) throw new Error(`上游服务异常：${upstreamResponse.status}`);
     const reader = upstreamResponse.body.getReader();
     const decoder = new TextDecoder();
+    let accumulated = '';
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -210,9 +211,19 @@ app.post('/api/chat', async (req, res) => {
         try {
           const json = JSON.parse(payload);
           const content = json.choices?.[0]?.delta?.content || json.choices?.[0]?.message?.content || '';
-          if (content) writeSse(res, 'delta', { content });
+          if (content) {
+            accumulated += content;
+            writeSse(res, 'delta', { content });
+          }
         } catch {}
       }
+    }
+    if (!accumulated.trim()) {
+      user.beans += config.chatBeansCost;
+      stats.totalRefundBeans += config.chatBeansCost;
+      transactions.push({ id: randomUUID(), userId: user.id, type: 'refund', beans: config.chatBeansCost, roleName, summary: 'AI 空回，已自动退还', createdAt: new Date().toISOString() });
+      writeSse(res, 'error', { message: 'AI 没有返回内容（空回），已自动退还本次扣除的豆子。' });
+      return res.end();
     }
     stats.totalChatCount += 1;
     writeSse(res, 'done', { beans: user.beans });
@@ -220,6 +231,7 @@ app.post('/api/chat', async (req, res) => {
   } catch (error) {
     user.beans += config.chatBeansCost;
     stats.totalRefundBeans += config.chatBeansCost;
+    transactions.push({ id: randomUUID(), userId: user.id, type: 'refund', beans: config.chatBeansCost, roleName, summary: `AI 请求失败已退还：${error.message}`.slice(0, 60), createdAt: new Date().toISOString() });
     writeSse(res, 'error', { message: 'AI 回复失败，已自动返还本次扣除的豆子。', detail: error.message });
     res.end();
   }
