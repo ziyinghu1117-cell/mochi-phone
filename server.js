@@ -52,6 +52,20 @@ const streamText = async (res, text) => {
   }
 };
 
+const refundChatBeans = (user, roleName = 'AI角色', summary = 'AI 回复失败自动退豆') => {
+  user.beans += config.chatBeansCost;
+  stats.totalRefundBeans += config.chatBeansCost;
+  transactions.push({
+    id: randomUUID(),
+    userId: user.id,
+    type: 'refund',
+    beans: config.chatBeansCost,
+    roleName,
+    summary,
+    createdAt: new Date().toISOString()
+  });
+};
+
 const publishCommunityRole = (role) => {
   const item = {
     id: role.id || randomUUID(),
@@ -199,27 +213,57 @@ app.post('/api/chat', async (req, res) => {
     if (!upstreamResponse.ok || !upstreamResponse.body) throw new Error(`上游服务异常：${upstreamResponse.status}`);
     const reader = upstreamResponse.body.getReader();
     const decoder = new TextDecoder();
+    let buffer = '';
+    let replyText = '';
+
+    const handlePayload = (payload) => {
+      if (!payload || payload === '[DONE]') return;
+      try {
+        const json = JSON.parse(payload);
+        const content = json.choices?.[0]?.delta?.content || json.choices?.[0]?.message?.content || '';
+        if (content) {
+          replyText += content;
+          writeSse(res, 'delta', { content });
+        }
+      } catch {}
+    };
+
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      const lines = chunk.split('\n').filter((line) => line.startsWith('data:'));
-      for (const line of lines) {
-        const payload = line.replace(/^data:\s*/, '').trim();
-        if (!payload || payload === '[DONE]') continue;
-        try {
-          const json = JSON.parse(payload);
-          const content = json.choices?.[0]?.delta?.content || json.choices?.[0]?.message?.content || '';
-          if (content) writeSse(res, 'delta', { content });
-        } catch {}
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() || '';
+      for (const part of parts) {
+        const dataLines = part.split('\n').filter((line) => line.startsWith('data:'));
+        for (const line of dataLines) {
+          handlePayload(line.replace(/^data:\s*/, '').trim());
+        }
       }
     }
+    buffer += decoder.decode();
+
+    if (buffer.trim()) {
+      const dataLines = buffer.split('\n').filter((line) => line.startsWith('data:'));
+      for (const line of dataLines) {
+        handlePayload(line.replace(/^data:\s*/, '').trim());
+      }
+    }
+
+    if (!replyText.trim()) {
+      refundChatBeans(user, roleName, 'AI 空回复，自动退回本次聊天豆子');
+      writeSse(res, 'error', {
+        message: 'AI 这次没有返回内容，已自动退回本次扣除的豆子，请再试一次。',
+        beans: user.beans
+      });
+      return res.end();
+    }
+
     stats.totalChatCount += 1;
     writeSse(res, 'done', { beans: user.beans });
     res.end();
   } catch (error) {
-    user.beans += config.chatBeansCost;
-    stats.totalRefundBeans += config.chatBeansCost;
+    refundChatBeans(user, roleName, 'AI 回复失败，自动退回本次聊天豆子');
     writeSse(res, 'error', { message: 'AI 回复失败，已自动返还本次扣除的豆子。', detail: error.message });
     res.end();
   }
