@@ -11,7 +11,6 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/mochi-phone-icon.svg" />
     <link rel="apple-touch-icon" href="icons/mochi-phone-icon.svg" />
-    <link rel="stylesheet" href="/novel-game.css" />
     <style>
 :root {
   --color-primary: #7466ff;
@@ -300,7 +299,7 @@ select {
   left: calc((100vw - min(100vw, 430px)) / 2);
   z-index: 30;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   width: min(100vw, 430px);
   padding: 8px 8px calc(8px + var(--safe-bottom));
   background: rgba(255, 255, 255, 0.94);
@@ -1213,44 +1212,6 @@ select {
           </div>
           <div id="costumeEditorWrap" class="costume-editor"></div>
         </section>
-
-        <section id="novelGamePage" class="page">
-          <div id="novelGameContainer" class="novel-container">
-            <div id="novelGameMain">
-              <div class="novel-tabs">
-                <button class="active" data-novel-tab="scripts" type="button">剧本库</button>
-                <button data-novel-tab="saves" type="button">我的存档</button>
-              </div>
-              <div id="novelGameContent">
-                <div class="novel-loading"><div class="novel-loading-spinner"></div>加载中...</div>
-              </div>
-            </div>
-            <div id="novelGameLobby" class="novel-lobby" style="display:none">
-              <div class="novel-lobby-header">
-                <h3 id="novelLobbyTitle">游戏大厅</h3>
-                <div class="subtitle" id="novelLobbySubtitle">准备开始冒险</div>
-              </div>
-              <div class="novel-lobby-body" id="novelLobbyBody"></div>
-            </div>
-            <div id="novelGameStory" class="novel-story" style="display:none">
-              <div class="novel-story-header">
-                <button class="novel-btn secondary small" id="novelStoryBack" type="button">← 返回</button>
-                <span class="round-badge" id="novelRoundBadge">第1轮</span>
-                <button class="novel-btn small" id="novelSaveBtn" type="button">保存</button>
-              </div>
-              <div class="novel-story-scroll" id="novelStoryScroll">
-                <div class="novel-story-content" id="novelStoryContent"></div>
-              </div>
-              <div class="novel-action-panel" id="novelActionPanel">
-                <div class="novel-actions" id="novelActions"></div>
-                <div class="novel-custom-action">
-                  <input type="text" id="novelCustomActionInput" placeholder="输入自定义行动..." />
-                  <button class="novel-btn" id="novelCustomActionBtn" type="button">执行</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
       <!-- Forum Full-screen Overlay -->
@@ -1309,7 +1270,6 @@ select {
         <button class="active" data-page="chatPage" type="button">聊天</button>
         <button data-page="rolesPage" type="button">角色</button>
         <button data-page="phonePage" type="button">手机</button>
-        <button data-page="novelGamePage" type="button">文游</button>
         <button data-page="memoryPage" type="button">记忆</button>
         <button data-page="profilePage" type="button">我的</button>
       </nav>
@@ -1337,10 +1297,6 @@ select {
     </dialog>
 
     <div id="toast" class="toast" role="status"></div>
-
-    <div id="novelModal" class="novel-modal-overlay">
-      <div class="novel-modal" id="novelModalContent"></div>
-    </div>
 
     <script>
 /* ===== config.js ===== */
@@ -2987,6 +2943,5 @@ init();
   <script src="/forum-avatars-base64.js"></script>
   <script src="/forum.js"></script>
   <script src="/profile.js"></script>
-  <script src="/novel-game.js"></script>
   </body>
 </html>
