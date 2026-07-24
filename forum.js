@@ -62,27 +62,95 @@ var onWorldSelectChange = function() {
     forumWorldRole = found ? { name: found.name, prompt: found.prompt || '' } : { name: name, prompt: '' };
   }
   forumPostsCache = { following: [], recommended: [], gossip: [] };
-  loadForumTab(forumCurrentTab);
+  if (forumView === 'feed') {
+    loadForumTab(forumCurrentTab);
+  } else {
+    loadForumTab('recommended');
+  }
 };
 
 /* === Open / Close === */
-var openForumOverlay = function(role) {
-  forumUserRole = role || null;
-  var overlay = document.getElementById('forumOverlay');
-  if (!overlay) return;
-  overlay.classList.add('active');
+var forumView = 'home'; /* 'home' or 'feed' */
+
+var showForumHome = function() {
+  forumView = 'home';
+  var home = document.getElementById('forumHomePage');
+  var feed = document.getElementById('forumFeedWrap');
+  if (home) home.classList.remove('hidden');
+  if (feed) feed.classList.add('hidden');
+  var fab = document.getElementById('forumFab');
+  if (fab) fab.style.display = 'none';
+  renderForumHomeHot();
+};
+
+var enterForumFeed = function(tab) {
+  forumView = 'feed';
+  var home = document.getElementById('forumHomePage');
+  var feed = document.getElementById('forumFeedWrap');
+  if (home) home.classList.add('hidden');
+  if (feed) feed.classList.remove('hidden');
+  var fab = document.getElementById('forumFab');
+  if (fab) fab.style.display = 'grid';
+  if (tab) forumCurrentTab = tab;
+  document.querySelectorAll('.forum-tab-item').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.forumTab === forumCurrentTab);
+  });
+  forumPostsCache = { following: [], recommended: [], gossip: [] };
+  loadForumTab(forumCurrentTab);
+};
+
+var renderForumHomeHot = function() {
+  var container = document.getElementById('forumHotList');
+  if (!container) return;
+  /* Gather hot posts from all cached tabs */
+  var allPosts = [];
+  for (var tab in forumPostsCache) {
+    forumPostsCache[tab].forEach(function(p) { allPosts.push(p); });
+  }
+  /* Sort by likes, take top 5 */
+  allPosts.sort(function(a, b) { return (b.likes || 0) - (a.likes || 0); });
+  var hot = allPosts.slice(0, 5);
+  if (hot.length === 0) {
+    container.innerHTML = '<div class="forum-hot-item"><span class="forum-hot-rank r1">1</span><div class="forum-hot-text"><h5>暂无热议</h5><p>进入广场查看更多内容</p></div><span class="forum-hot-likes">♥ 0</span></div>';
+    return;
+  }
+  container.innerHTML = hot.map(function(post, idx) {
+    var rankClass = 'r' + (idx + 1);
+    var preview = String(post.content || '').substring(0, 40);
+    var author = post.authorName || '匿名';
+    var likes = post.likes || 0;
+    return '<div class="forum-hot-item" data-post-id="' + escapeHtml(post.id || '') + '">'
+      + '<span class="forum-hot-rank ' + rankClass + '">' + (idx + 1) + '</span>'
+      + '<div class="forum-hot-text"><h5>' + escapeHtml(preview) + '</h5><p>@' + escapeHtml(author) + '</p></div>'
+      + '<span class="forum-hot-likes">♥ ' + likes + '</span>'
+      + '</div>';
+  }).join('');
+};
+
+var openForumPage = function() {
+  forumUserRole = (typeof activeRole === 'function') ? activeRole() : null;
   forumCurrentTab = 'following';
   forumPostsCache = { following: [], recommended: [], gossip: [] };
   populateWorldSelect();
-  document.querySelectorAll('.forum-tab-item').forEach(function(t) {
-    t.classList.toggle('active', t.dataset.forumTab === 'following');
-  });
-  loadForumTab('following');
+  showForumHome();
+  /* Preload hot posts in background */
+  loadForumTab('recommended');
+};
+
+var openForumOverlay = function(role) {
+  forumUserRole = role || null;
+  var forumNavBtn = document.querySelector('.bottom-nav [data-page="forumPage"]');
+  if (forumNavBtn) {
+    forumNavBtn.click();
+  }
+  forumCurrentTab = 'following';
+  forumPostsCache = { following: [], recommended: [], gossip: [] };
+  populateWorldSelect();
+  showForumHome();
+  loadForumTab('recommended');
 };
 
 var closeForumOverlay = function() {
-  var overlay = document.getElementById('forumOverlay');
-  if (overlay) overlay.classList.remove('active');
   closeForumDetail();
   closeForumPostModal();
 };
@@ -149,7 +217,9 @@ var loadForumTab = async function(tab) {
   }
 
   forumLoading[tab] = false;
-  if (tab === forumCurrentTab) renderForumPosts(tab);
+  if (tab === forumCurrentTab && forumView === 'feed') renderForumPosts(tab);
+  /* Always refresh homepage hot list when new posts arrive */
+  if (forumView === 'home') renderForumHomeHot();
 };
 
 /* === Render posts (Xiaohongshu double-column grid) === */
@@ -348,13 +418,32 @@ var bindForumEvents = function() {
     });
   });
 
+  /* Forum homepage: enter feed buttons */
+  var enterFeedBtns = ['forumEnterBtn', 'forumEnterFeed', 'forumHotMore'];
+  enterFeedBtns.forEach(function(id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', function() { enterForumFeed('following'); });
+  });
+
+  /* Forum homepage: board cards */
+  document.querySelectorAll('.forum-board-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      var board = this.dataset.board;
+      var tabMap = { tide: 'following', deep: 'recommended', dark: 'gossip', wave: 'recommended', evening: 'recommended' };
+      enterForumFeed(tabMap[board] || 'recommended');
+    });
+  });
+
+  /* Forum homepage: hot post click */
+  var hotList = document.getElementById('forumHotList');
+  if (hotList) hotList.addEventListener('click', function(e) {
+    var item = e.target.closest('[data-post-id]');
+    if (item && item.dataset.postId) openPostDetail(item.dataset.postId);
+  });
+
   /* World selector */
   var worldSel = document.getElementById('forumWorldSelect');
   if (worldSel) worldSel.addEventListener('change', onWorldSelectChange);
-
-  /* Close overlay */
-  var closeBtn = document.getElementById('forumCloseBtn');
-  if (closeBtn) closeBtn.addEventListener('click', closeForumOverlay);
 
   /* Refresh */
   var refreshBtn = document.getElementById('forumRefreshBtn');
