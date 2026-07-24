@@ -318,8 +318,7 @@ app.use(cors({ origin: true }));
 app.use(express.json({ limit: '5mb' }));
 // Serve static files from public directory
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PUBLIC_DIR = path.join(__dirname, 'public');
-app.use('/avatars', express.static(path.join(PUBLIC_DIR, 'avatars')));
+const PUBLIC_DIR = __dirname;
 app.use(express.static(PUBLIC_DIR));
 
 app.use((req, _res, next) => {
