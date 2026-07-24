@@ -338,18 +338,28 @@ publishCommunityRole({ name: '赛博侦探', description: '冷静、敏锐，适
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '5mb' }));
-// Serve static files from root directory
+// Serve static files: try public/ first, then root (for Render without subfolders)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
-app.use(express.static(PUBLIC_DIR));
+const ROOT_DIR = __dirname;
+const publicExists = fs.existsSync(PUBLIC_DIR);
+app.use(express.static(publicExists ? PUBLIC_DIR : ROOT_DIR));
+if (!publicExists) app.use(express.static(ROOT_DIR));
 
 app.use((req, _res, next) => {
   req.userId = String(req.headers['x-user-id'] || 'demo-user').slice(0, 80);
   next();
 });
 
+// Serve index.html from wherever it exists
+const indexPath = fs.existsSync(path.join(PUBLIC_DIR, 'index.html'))
+  ? path.join(PUBLIC_DIR, 'index.html')
+  : fs.existsSync(path.join(ROOT_DIR, 'index.html'))
+    ? path.join(ROOT_DIR, 'index.html')
+    : path.join(PUBLIC_DIR, 'index.html');
+
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+  res.sendFile(indexPath);
 });
 
 app.get('/api/health', (_req, res) => ok(res, { status: 'running', name: 'Mochi-phone' }));
