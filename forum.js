@@ -27,6 +27,43 @@ var forumCommentsCache = {};
 var forumLoading = { following: false, recommended: false, gossip: false };
 var forumUserRole = null;
 var forumCurrentPostId = null;
+var forumWorldRole = null;
+
+/* === World selector === */
+var populateWorldSelect = function() {
+  var sel = document.getElementById('forumWorldSelect');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">全部世界</option>';
+  var roles = (typeof state !== 'undefined' && state.roles) ? state.roles : [];
+  var communityRoles = (typeof communityRoles !== 'undefined') ? communityRoles : [];
+  var allRoles = roles.concat(communityRoles);
+  var seen = {};
+  allRoles.forEach(function(r) {
+    if (r && r.name && !seen[r.name]) {
+      seen[r.name] = true;
+      var opt = document.createElement('option');
+      opt.value = r.name;
+      opt.textContent = r.name + ' 的世界';
+      sel.appendChild(opt);
+    }
+  });
+};
+
+var onWorldSelectChange = function() {
+  var sel = document.getElementById('forumWorldSelect');
+  if (!sel) return;
+  var name = sel.value;
+  if (!name) {
+    forumWorldRole = null;
+  } else {
+    var roles = (typeof state !== 'undefined' && state.roles) ? state.roles : [];
+    var communityRoles = (typeof communityRoles !== 'undefined') ? communityRoles : [];
+    var found = roles.concat(communityRoles).find(function(r) { return r.name === name; });
+    forumWorldRole = found ? { name: found.name, prompt: found.prompt || '' } : { name: name, prompt: '' };
+  }
+  forumPostsCache = { following: [], recommended: [], gossip: [] };
+  loadForumTab(forumCurrentTab);
+};
 
 /* === Open / Close === */
 var openForumOverlay = function(role) {
@@ -36,6 +73,7 @@ var openForumOverlay = function(role) {
   overlay.classList.add('active');
   forumCurrentTab = 'following';
   forumPostsCache = { following: [], recommended: [], gossip: [] };
+  populateWorldSelect();
   document.querySelectorAll('.forum-tab-item').forEach(function(t) {
     t.classList.toggle('active', t.dataset.forumTab === 'following');
   });
@@ -95,7 +133,8 @@ var loadForumTab = async function(tab) {
         roleName: (role ? role.name : ''),
         rolePrompt: (role ? role.prompt : ''),
         recentMessages: messages,
-        memories: memList
+        memories: memList,
+        worldRole: forumWorldRole || null
       })
     });
     var data = await resp.json();
@@ -183,6 +222,34 @@ var openPostDetail = function(postId) {
   }
 
   renderForumComments(postId);
+  /* Auto-generate comments if none exist */
+  if ((!forumCommentsCache[postId] || forumCommentsCache[postId].length === 0) && !post._commentsLoaded) {
+    generateForumComments(postId, post);
+  }
+};
+
+var generateForumComments = async function(postId, post) {
+  if (!post) return;
+  post._commentsLoaded = true;
+  var container = document.getElementById('forumDetailComments');
+  if (container) container.innerHTML = '<h4>评论</h4><div class="forum-loading">正在生成评论...</div>';
+  try {
+    var resp = await fetch('/api/forum/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-User-Id': (state.userId || 'demo-user') },
+      body: JSON.stringify({ postContent: post.content, postAuthor: post.authorName, count: 3 })
+    });
+    var data = await resp.json();
+    if (data && data.data && data.data.comments) {
+      forumCommentsCache[postId] = data.data.comments;
+      if (forumCurrentPostId === postId) renderForumComments(postId);
+      /* Update comment count in actions bar */
+      var commentAction = document.querySelector('[data-action="comment"]');
+      if (commentAction) commentAction.textContent = '💬 ' + data.data.comments.length;
+    }
+  } catch (e) {
+    console.warn('Comment generation error:', e);
+  }
 };
 
 var closeForumDetail = function() {
@@ -280,6 +347,10 @@ var bindForumEvents = function() {
       switchForumTab(this.dataset.forumTab);
     });
   });
+
+  /* World selector */
+  var worldSel = document.getElementById('forumWorldSelect');
+  if (worldSel) worldSel.addEventListener('change', onWorldSelectChange);
 
   /* Close overlay */
   var closeBtn = document.getElementById('forumCloseBtn');

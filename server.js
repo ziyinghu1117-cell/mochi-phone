@@ -34,6 +34,8 @@ const users = new Map();
 const transactions = [];
 const communityRoles = [];
 const userMemories = new Map();
+const userProfiles = new Map();
+const directMessages = new Map();
 const stats = { totalRechargeCny: 0, totalBeansConsumed: 0, totalChatCount: 0, totalRefundBeans: 0 };
 
 const DATA_DIR = process.env.DATA_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '.data');
@@ -49,6 +51,8 @@ const saveDataNow = () => {
       users: [...users.values()],
       transactions: transactions.slice(-1000),
       memories: Object.fromEntries([...userMemories.entries()].map(([userId, list]) => [userId, list.slice(-300)])),
+      profiles: Object.fromEntries([...userProfiles.entries()].map(([userId, p]) => [userId, p])),
+      messages: Object.fromEntries([...directMessages.entries()].map(([userId, list]) => [userId, list.slice(-200)])),
       stats
     };
     fs.writeFileSync(DATA_FILE, JSON.stringify(payload, null, 2), 'utf8');
@@ -88,6 +92,16 @@ const loadData = () => {
         totalChatCount: Number(payload.stats.totalChatCount || 0),
         totalRefundBeans: Number(payload.stats.totalRefundBeans || 0)
       });
+    }
+    if (payload.profiles && typeof payload.profiles === 'object') {
+      for (const [userId, p] of Object.entries(payload.profiles)) {
+        if (p && typeof p === 'object') userProfiles.set(String(userId).slice(0, 80), p);
+      }
+    }
+    if (payload.messages && typeof payload.messages === 'object') {
+      for (const [userId, list] of Object.entries(payload.messages)) {
+        if (Array.isArray(list)) directMessages.set(String(userId).slice(0, 80), list.slice(-200));
+      }
     }
   } catch (error) {
     console.warn('读取数据失败，将使用空数据启动：', error.message);
@@ -316,7 +330,7 @@ publishCommunityRole({ name: '赛博侦探', description: '冷静、敏锐，适
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: '5mb' }));
-// Serve static files from public directory
+// Serve static files from root directory
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = __dirname;
 app.use(express.static(PUBLIC_DIR));
@@ -604,7 +618,7 @@ const generateFallbackPosts = (tab, roleName) => {
 };
 
 app.post('/api/forum/generate', async (req, res) => {
-  const { tab, roleName, rolePrompt, recentMessages, memories } = req.body || {};
+  const { tab, roleName, rolePrompt, recentMessages, memories, worldRole } = req.body || {};
   const validTabs = ['following', 'recommended', 'gossip'];
   const activeTab = validTabs.includes(tab) ? tab : 'recommended';
   try {
@@ -617,6 +631,10 @@ app.post('/api/forum/generate', async (req, res) => {
     const authorPool = FORUM_AUTHOR_NAMES.join('、');
     const contextInfo = [];
     if (roleName) contextInfo.push('当前用户正在互动的角色是"' + roleName + '"');
+    if (worldRole && worldRole.name) {
+      contextInfo.push('用户选择了"' + worldRole.name + '"的世界视角，大约20%的帖子应与这个角色或其世界有关联（提及该角色、与其相关的场景、互动、传闻等），其余帖子保持独立内容');
+      if (worldRole.prompt) contextInfo.push('角色设定概要：' + String(worldRole.prompt).slice(0, 200));
+    }
     if (recentMessages && recentMessages.length > 0) {
       const lastMsg = recentMessages[recentMessages.length - 1];
       if (lastMsg && lastMsg.content) contextInfo.push('最近的对话内容：' + String(lastMsg.content).slice(0, 80));
@@ -628,7 +646,7 @@ app.post('/api/forum/generate', async (req, res) => {
 
     const prompt = '你是一个虚拟社区论坛的内容生成器。' + tabDesc[activeTab] + '\n\n' +
       '请生成8条帖子，每条帖子包含：authorName(作者名，从这些名字中随机选择或创作类似的：' + authorPool + ')、content(帖子正文，50-150字，口语化、有生活气息、像真人在社交媒体发的内容)、time(发布时间，如"刚刚"、"5分钟前"、"1小时前")。\n\n' +
-      (contextInfo.length > 0 ? '背景信息：' + contextInfo.join('\n') + '\n\n' : '') +
+      (contextInfo.length > 0 ? '背景信息：\n' + contextInfo.join('\n') + '\n\n' : '') +
       '要求：\n1. 内容风格参考小红书和微博，轻松、真实、有趣\n2. 可以带emoji和话题标签#\n3. 每条帖子长度和风格要有差异\n4. 返回JSON格式：{"posts":[...]}\n5. 不要有任何解释性文字，只返回JSON';
 
     if (!config.upstreamKey || config.upstreamKey.includes('请填写')) {
@@ -675,6 +693,183 @@ app.post('/api/forum/generate', async (req, res) => {
     ok(res, { posts, tab: activeTab });
   } catch (error) {
     ok(res, { posts: generateFallbackPosts(activeTab, roleName), tab: activeTab, error: error.message });
+  }
+});
+
+/* === Forum Comment Generation API === */
+const FORUM_COMMENT_AUTHORS = [
+  '碎碎念bot', '深夜食堂', '柠檬不萌', '星河滚烫', '草莓味晚风',
+  '云朵邮局', '人间清醒', '气泡水加冰', '银河系迷路', '温柔半两',
+  '海盐焦糖', '落日余晖', '猫薄荷', '今日份快乐', '南风知我意'
+];
+
+const generateFallbackComments = (postContent, count) => {
+  const templates = [
+    '说得太对了！',
+    '哇这个好有意思',
+    '我也是这么觉得的',
+    '哈哈笑死我了',
+    '楼主好会说话',
+    '已收藏！',
+    '这才是真实的生活啊',
+    '看完心情变好了',
+    '同感同感',
+    '可以可以，学到了',
+    '这也太真实了吧',
+    '楼主继续更新啊'
+  ];
+  const n = count || (2 + Math.floor(Math.random() * 3));
+  const comments = [];
+  for (let i = 0; i < n; i++) {
+    const authorIdx = Math.floor(Math.random() * FORUM_COMMENT_AUTHORS.length);
+    comments.push({
+      id: 'c-fb-' + Date.now() + '-' + i,
+      authorName: FORUM_COMMENT_AUTHORS[authorIdx],
+      content: templates[Math.floor(Math.random() * templates.length)],
+      time: ['刚刚', '2分钟前', '5分钟前', '15分钟前', '半小时前'][i % 5],
+      avatarIndex: authorIdx % FORUM_AVATAR_COUNT
+    });
+  }
+  return comments;
+};
+
+app.post('/api/forum/comments', async (req, res) => {
+  const { postContent, postAuthor, tab, count } = req.body || {};
+  try {
+    const prompt = '你是一个论坛评论区生成器。请为以下帖子生成' + (count || 3) + '条评论。\n\n' +
+      '帖子作者：' + (postAuthor || '匿名') + '\n' +
+      '帖子内容：' + String(postContent || '').slice(0, 200) + '\n\n' +
+      '要求：\n1. 评论风格参考小红书和微博评论区，口语化、真实\n2. 每条评论10-50字\n3. 可以带emoji\n4. 评论要有不同立场和风格（赞同、调侃、追问、分享经历等）\n5. 返回JSON格式：{"comments":[{"authorName":"","content":"","time":""}]}\n6. 只返回JSON，不要解释';
+
+    if (!config.upstreamKey || config.upstreamKey.includes('请填写')) {
+      return ok(res, { comments: generateFallbackComments(postContent, count) });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    const apiResp = await fetch(config.upstreamBase + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + config.upstreamKey },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: config.upstreamModel,
+        stream: false,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    }).finally(() => clearTimeout(timeout));
+
+    if (!apiResp.ok) throw new Error('上游API异常: ' + apiResp.status);
+    const apiData = await apiResp.json();
+    const rawText = apiData.choices?.[0]?.message?.content || '';
+
+    let comments = [];
+    try {
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : rawText);
+      if (parsed && Array.isArray(parsed.comments)) {
+        comments = parsed.comments.slice(0, 6).map((c, idx) => ({
+          id: 'c-ai-' + Date.now() + '-' + idx,
+          authorName: String(c.authorName || FORUM_COMMENT_AUTHORS[idx % FORUM_COMMENT_AUTHORS.length]).slice(0, 24),
+          content: String(c.content || '').slice(0, 200),
+          time: String(c.time || '刚刚').slice(0, 20),
+          avatarIndex: (idx + Math.floor(Math.random() * 3)) % FORUM_AVATAR_COUNT
+        }));
+      }
+    } catch (e) {
+      console.warn('Comment JSON parse error:', e.message);
+    }
+
+    if (comments.length === 0) comments = generateFallbackComments(postContent, count);
+    ok(res, { comments });
+  } catch (error) {
+    ok(res, { comments: generateFallbackComments(postContent, count), error: error.message });
+  }
+});
+
+/* === User Profile (个人主页) API === */
+
+app.get('/api/profile', (req, res) => {
+  const profile = userProfiles.get(req.userId) || { nickname: '体验用户', bio: '', avatar: '' };
+  ok(res, profile);
+});
+
+app.post('/api/profile', (req, res) => {
+  const { nickname, bio, avatar } = req.body || {};
+  const profile = {
+    nickname: String(nickname || '体验用户').slice(0, 40),
+    bio: String(bio || '').slice(0, 500),
+    avatar: String(avatar || '').slice(0, 200000),
+    updatedAt: new Date().toISOString()
+  };
+  userProfiles.set(req.userId, profile);
+  saveData();
+  ok(res, profile, '个人资料已保存');
+});
+
+/* === Direct Messages (私信) API === */
+
+app.get('/api/messages', (req, res) => {
+  const list = directMessages.get(req.userId) || [];
+  ok(res, { list });
+});
+
+app.post('/api/messages', (req, res) => {
+  const { role, content, fromUser } = req.body || {};
+  if (!content || !content.trim()) return fail(res, 400, 4005, '消息内容不能为空。');
+  const list = directMessages.get(req.userId) || [];
+  const msg = {
+    id: randomUUID(),
+    role: String(role || 'system').slice(0, 40),
+    content: String(content).slice(0, 500),
+    fromUser: fromUser !== false,
+    createdAt: new Date().toISOString()
+  };
+  list.unshift(msg);
+  if (list.length > 200) list.length = 200;
+  directMessages.set(req.userId, list);
+  saveData();
+  ok(res, msg, '消息已发送');
+});
+
+app.delete('/api/messages/:id', (req, res) => {
+  const list = directMessages.get(req.userId) || [];
+  const filtered = list.filter(m => m.id !== req.params.id);
+  if (filtered.length !== list.length) {
+    directMessages.set(req.userId, filtered);
+    saveData();
+  }
+  ok(res, { deleted: list.length - filtered.length }, '消息已删除');
+});
+
+app.post('/api/messages/reply', async (req, res) => {
+  const { role, rolePrompt, userMessage } = req.body || {};
+  if (!userMessage || !userMessage.trim()) return fail(res, 400, 4006, '消息内容不能为空。');
+  try {
+    const sysPrompt = (rolePrompt || '你是一个温柔的角色。') + '\n用户给你发了一条私信，请以角色的语气回复，回复要简短（20-80字），像微信聊天一样自然。';
+    if (!config.upstreamKey || config.upstreamKey.includes('请填写')) {
+      return ok(res, { reply: '收到你的私信了！' + String(userMessage).slice(0, 20) + '...我会认真看的~' });
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    const apiResp = await fetch(config.upstreamBase + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + config.upstreamKey },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: config.upstreamModel,
+        stream: false,
+        messages: [
+          { role: 'system', content: sysPrompt },
+          { role: 'user', content: String(userMessage).slice(0, 300) }
+        ]
+      })
+    }).finally(() => clearTimeout(timeout));
+    if (!apiResp.ok) throw new Error('上游API异常: ' + apiResp.status);
+    const apiData = await apiResp.json();
+    const reply = apiData.choices?.[0]?.message?.content || '收到啦~';
+    ok(res, { reply: String(reply).slice(0, 200) });
+  } catch (error) {
+    ok(res, { reply: '抱歉，我现在不太方便回复，稍后再聊~', error: error.message });
   }
 });
 

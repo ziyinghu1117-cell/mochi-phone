@@ -419,6 +419,12 @@ select {
   margin-top: 12px;
 }
 
+.profile-header{display:flex;align-items:center;gap:14px;padding:20px 16px;background:linear-gradient(135deg,#7466ff,#ff8fb3);border-radius:22px;margin-top:12px;box-shadow:0 8px 24px rgba(116,102,255,.2)}
+.profile-header-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.6);background:rgba(255,255,255,.2);flex-shrink:0}
+.profile-header-info{flex:1;min-width:0}
+.profile-header-name{font-size:1.2rem;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.15)}
+.profile-header-bio{font-size:.85rem;color:rgba(255,255,255,.85);margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
 .profile-card label {
   display: grid;
   gap: 7px;
@@ -1031,6 +1037,20 @@ select {
 .forum-post-modal-btn{flex:1;padding:10px;border:0;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer}
 .forum-post-modal-btn.cancel{background:rgba(0,0,0,.06);color:#1a1a2e}
 .forum-post-modal-btn.publish{background:linear-gradient(135deg,#7466ff,#ff8fb3);color:#fff}
+/* World selector */
+.forum-world-selector{flex:1;margin:0 12px}
+.forum-world-select{width:100%;padding:6px 10px;border:1px solid rgba(0,0,0,.1);border-radius:20px;font-size:.85rem;background:#fff;color:#1a1a2e;outline:none;cursor:pointer}
+.forum-world-select:focus{border-color:#7466ff}
+/* DM (Direct Messages) */
+.dm-role-bar{display:flex;gap:8px;padding:10px 12px;overflow-x:auto;background:rgba(255,255,255,.92);border-bottom:1px solid rgba(0,0,0,.06)}
+.dm-role-chip{flex-shrink:0;padding:6px 14px;border-radius:20px;background:rgba(116,102,255,.1);color:#7466ff;font-size:.82rem;font-weight:600;cursor:pointer;border:0;white-space:nowrap}
+.dm-role-chip.active{background:linear-gradient(135deg,#7466ff,#ff8fb3);color:#fff}
+.dm-chat-list{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.dm-bubble{max-width:75%;padding:10px 14px;border-radius:16px;font-size:.88rem;line-height:1.5;word-break:break-word}
+.dm-bubble.from-user{align-self:flex-end;background:linear-gradient(135deg,#7466ff,#ff8fb3);color:#fff;border-bottom-right-radius:4px}
+.dm-bubble.from-role{align-self:flex-start;background:#fff;color:#1a1a2e;border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.dm-bubble .dm-time{font-size:.7rem;opacity:.6;margin-top:2px}
+.dm-input-wrap{border-top:1px solid rgba(0,0,0,.06)}
 
 </style>
   </head>
@@ -1124,6 +1144,14 @@ select {
         </section>
 
         <section id="profilePage" class="page">
+          <div class="profile-header" id="profileHeader">
+            <img class="profile-header-avatar" id="profileHeaderAvatar" alt="" />
+            <div class="profile-header-info">
+              <div class="profile-header-name" id="profileHeaderName">体验用户</div>
+              <div class="profile-header-bio" id="profileHeaderBio"></div>
+            </div>
+          </div>
+
           <div class="profile-card">
             <label class="avatar-uploader">
               <img id="userAvatarPreview" alt="用户头像" />
@@ -1147,6 +1175,7 @@ select {
           </div>
 
           <div class="panel settings-list">
+            <button id="openMessagesBtn" type="button">私信</button>
             <button data-costume-tab="page" type="button">自定义页面 UI</button>
             <button data-costume-tab="bubble" type="button">自定义聊天气泡</button>
             <button data-costume-tab="wallpaper" type="button">自定义聊天壁纸</button>
@@ -1156,6 +1185,24 @@ select {
             <button id="clearCacheButton" type="button">清空本地缓存</button>
           </div>
         </section>
+
+        <!-- Direct Messages Overlay -->
+        <div id="dmOverlay" class="forum-overlay">
+          <div class="forum-overlay-header">
+            <span class="forum-overlay-title">私信</span>
+            <div class="forum-overlay-actions">
+              <button class="forum-overlay-btn" id="dmCloseBtn" type="button">×</button>
+            </div>
+          </div>
+          <div class="dm-role-bar" id="dmRoleBar"></div>
+          <div class="dm-chat-list" id="dmChatList">
+            <div class="forum-loading">选择一个角色开始私信</div>
+          </div>
+          <div class="forum-comment-input-wrap dm-input-wrap">
+            <input class="forum-comment-input" id="dmInput" placeholder="发送私信..." />
+            <button class="forum-comment-send" id="dmSendBtn" type="button">发送</button>
+          </div>
+        </div>
 
         <section id="costumePage" class="page">
           <div class="tabs">
@@ -1171,6 +1218,11 @@ select {
       <div id="forumOverlay" class="forum-overlay">
         <div class="forum-overlay-header">
           <span class="forum-overlay-title">论坛</span>
+          <div class="forum-world-selector">
+            <select id="forumWorldSelect" class="forum-world-select">
+              <option value="">全部世界</option>
+            </select>
+          </div>
           <div class="forum-overlay-actions">
             <button class="forum-overlay-btn" id="forumRefreshBtn" type="button">⟳</button>
             <button class="forum-overlay-btn" id="forumCloseBtn" type="button">×</button>
@@ -2226,6 +2278,13 @@ const renderProfile = () => {
   $('#userNicknameInput').value = state.user.nickname;
   $('#userBioInput').value = state.user.bio;
   $('#userAvatarPreview').src = avatarOf(state.user.nickname, state.user.avatar);
+  /* Update profile header display */
+  const headerAvatar = $('#profileHeaderAvatar');
+  const headerName = $('#profileHeaderName');
+  const headerBio = $('#profileHeaderBio');
+  if (headerAvatar) headerAvatar.src = avatarOf(state.user.nickname, state.user.avatar);
+  if (headerName) headerName.textContent = state.user.nickname || '体验用户';
+  if (headerBio) headerBio.textContent = state.user.bio || '点击下方编辑个人资料~';
 };
 
 const renderMemoryRoleOptions = () => {
@@ -2717,12 +2776,19 @@ const bindEvents = () => {
   $('#chatForm').addEventListener('submit', sendMessage);
   $('#communitySearchButton').addEventListener('click', renderCommunity);
 
-  $('#saveProfileButton').addEventListener('click', () => {
+  $('#saveProfileButton').addEventListener('click', async () => {
     state.user.nickname = $('#userNicknameInput').value.trim() || '体验用户';
     state.user.bio = $('#userBioInput').value.trim();
     persist();
     renderAll();
     toast('个人资料已保存。');
+    try {
+      await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Id': state.userId },
+        body: JSON.stringify({ nickname: state.user.nickname, bio: state.user.bio, avatar: state.user.avatar || '' })
+      });
+    } catch (e) { /* server sync optional */ }
   });
 
   $('#exportDataButton').addEventListener('click', exportBackup);
@@ -2756,6 +2822,13 @@ const bindEvents = () => {
     state.user.avatar = await readFileAsDataUrl(file);
     persist();
     renderProfile();
+    try {
+      await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Id': state.userId },
+        body: JSON.stringify({ nickname: state.user.nickname, bio: state.user.bio, avatar: state.user.avatar })
+      });
+    } catch (e) { /* server sync optional */ }
   });
 
   // 长按/右键气泡删除单条消息
@@ -2842,11 +2915,33 @@ const init = async () => {
   } catch (error) {
     toast(error.message);
   }
+  /* Load profile from server (cross-device sync) */
+  try {
+    const resp = await fetch('/api/profile', { headers: { 'X-User-Id': state.userId } });
+    const data = await resp.json();
+    if (data && data.data && data.data.nickname) {
+      let changed = false;
+      if (data.data.nickname && data.data.nickname !== '体验用户' && (!state.user.nickname || state.user.nickname === '体验用户')) {
+        state.user.nickname = data.data.nickname;
+        changed = true;
+      }
+      if (data.data.bio && !state.user.bio) {
+        state.user.bio = data.data.bio;
+        changed = true;
+      }
+      if (data.data.avatar && !state.user.avatar) {
+        state.user.avatar = data.data.avatar;
+        changed = true;
+      }
+      if (changed) { persist(); renderProfile(); }
+    }
+  } catch (e) { /* server profile sync optional */ }
 };
 
 init();
 </script>
   <script src="/forum-avatars-base64.js"></script>
   <script src="/forum.js"></script>
+  <script src="/profile.js"></script>
   </body>
 </html>
