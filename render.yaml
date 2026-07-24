@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: mochi-phone
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: UPSTREAM_API_KEY
+        sync: false
+      - key: UPSTREAM_API_BASE
+        value: https://az.zlapi.vip/v1
+      - key: UPSTREAM_MODEL
+        value: "[0.005]自营伪流/gemini-2.5-flash"
+      - key: CHAT_BEANS_COST
+        value: "2"
+      - key: BEANS_PER_CNY
+        value: "10"
+      - key: RECHARGE_PACKAGES
+        value: "6:60,18:200,30:360,68:900"
+      - key: DEMO_INITIAL_BEANS
+        value: "30"
+      - key: DATA_DIR
+        value: .data

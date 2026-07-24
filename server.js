@@ -8978,7 +8978,7 @@ const mockStreamChat = async (payload, handlers, signal) => {
 /* ===== app.js ===== */
 
 const $ = (selector) => document.querySelector(selector);
-const $ = (selector) => [...document.querySelectorAll(selector)];
+const $$ = (selector) => [...document.querySelectorAll(selector)];
 
 let state = loadState();
 let billingConfig = { chatBeansCost: 2, rechargePackages: [] };
@@ -9543,7 +9543,7 @@ const renderCommunity = async () => {
 };
 
 const renderCostumeEditor = (mode = 'page') => {
-  $('.tabs [data-costume-mode]').forEach((btn) => btn.classList.toggle('active', btn.dataset.costumeMode === mode));
+  $$('.tabs [data-costume-mode]').forEach((btn) => btn.classList.toggle('active', btn.dataset.costumeMode === mode));
   const wrap = $('#costumeEditorWrap');
   if (mode === 'wallpaper') {
     wrap.innerHTML = \`
@@ -9813,8 +9813,8 @@ const bindEvents = () => {
   $('.bottom-nav').addEventListener('click', (event) => {
     const btn = event.target.closest('[data-page]');
     if (!btn) return;
-    $('.page').forEach((page) => page.classList.toggle('active', page.id === btn.dataset.page));
-    $('.bottom-nav button').forEach((item) => item.classList.toggle('active', item === btn));
+    $$('.page').forEach((page) => page.classList.toggle('active', page.id === btn.dataset.page));
+    $$('.bottom-nav button').forEach((item) => item.classList.toggle('active', item === btn));
     $('#pageTitle').textContent = btn.textContent;
     if (btn.dataset.page === 'communityPage') renderCommunity();
     if (btn.dataset.page === 'phonePage') renderPhoneDesktop();
@@ -9836,8 +9836,8 @@ const bindEvents = () => {
 
     const openCommunityBtn = event.target.closest('[data-open-community]');
     if (openCommunityBtn) {
-      $('.page').forEach((page) => page.classList.toggle('active', page.id === 'communityPage'));
-      $('.bottom-nav button').forEach((item) => item.classList.remove('active'));
+      $$('.page').forEach((page) => page.classList.toggle('active', page.id === 'communityPage'));
+      $$('.bottom-nav button').forEach((item) => item.classList.remove('active'));
       $('#pageTitle').textContent = '社区';
       renderCommunity();
       return;
@@ -9918,7 +9918,7 @@ const bindEvents = () => {
     const costumeEntry = event.target.closest('[data-costume-tab]');
     if (costumeEntry) {
       $('.bottom-nav [data-page="profilePage"]').classList.remove('active');
-      $('.page').forEach((page) => page.classList.toggle('active', page.id === 'costumePage'));
+      $$('.page').forEach((page) => page.classList.toggle('active', page.id === 'costumePage'));
       $('#pageTitle').textContent = '自定义装扮';
       renderCostumeEditor(costumeEntry.dataset.costumeTab);
     }
@@ -9930,7 +9930,7 @@ const bindEvents = () => {
   $('#saveMemoryButton').addEventListener('click', saveMemory);
   $('#refreshMemoryButton').addEventListener('click', renderMemories);
   $('#memoryRoleSelect').addEventListener('change', renderMemories);
-  $('[data-close-dialog]').forEach((btn) => btn.addEventListener('click', () => $('#roleDialog').close()));
+  $$('[data-close-dialog]').forEach((btn) => btn.addEventListener('click', () => $('#roleDialog').close()));
   $('#chatForm').addEventListener('submit', sendMessage);
   $('#communitySearchButton').addEventListener('click', renderCommunity);
 
@@ -10122,7 +10122,7 @@ var FORUM_AVATAR_BASE64 = {
  *   2. Doujin Forum  (LOFTER light theme)        -> #doujinForumOverlay
  *
  * Loaded after the main script + forum-avatars-base64.js, so it can use:
- *   state, activeRole(), getMessages(), escapeHtml(), $(), $(), toast(),
+ *   state, activeRole(), getMessages(), escapeHtml(), $(), $$(), toast(),
  *   request(), CONFIG.userId, FORUM_AVATAR_BASE64
  *
  * Exported globals: openSocialForum, closeSocialForum,
@@ -11708,7 +11708,7 @@ if (document.readyState === 'loading') {
 <script>/* inlined novel-game.js */
 /* === Novel Game (文游) Module ===
  * UU-style text-based game. Vanilla JS, no modules.
- * Depends on globals from index.html: request, toast, escapeHtml, $, $, CONFIG, state.
+ * Depends on globals from index.html: request, toast, escapeHtml, $, $$, CONFIG, state.
  *
  * HTML hooks (already present in index.html):
  *   #novelGamePage            - section.page (toggled .active)
@@ -12450,7 +12450,7 @@ document.addEventListener('click', async (e) => {
   const tabBtn = e.target.closest('[data-novel-tab]');
   if (tabBtn) {
     novelState.currentTab = tabBtn.dataset.novelTab;
-    $('.novel-tabs [data-novel-tab]').forEach((b) => b.classList.toggle('active', b === tabBtn));
+    $$('.novel-tabs [data-novel-tab]').forEach((b) => b.classList.toggle('active', b === tabBtn));
     if (novelState.currentTab === 'scripts') { renderNovelScripts(); loadNovelScripts(); }
     else { renderNovelSaves(); loadNovelSaves(); }
     return;
