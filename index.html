@@ -11,7 +11,6 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icons/mochi-phone-icon.svg" />
     <link rel="apple-touch-icon" href="icons/mochi-phone-icon.svg" />
-    <link rel="stylesheet" href="/novel-game.css" />
     <style>
 :root {
   --color-primary: #7466ff;
@@ -300,7 +299,7 @@ select {
   left: calc((100vw - min(100vw, 430px)) / 2);
   z-index: 30;
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   width: min(100vw, 430px);
   padding: 8px 8px calc(8px + var(--safe-bottom));
   background: rgba(255, 255, 255, 0.94);
@@ -1042,54 +1041,6 @@ select {
 .forum-world-selector{flex:1;margin:0 12px}
 .forum-world-select{width:100%;padding:6px 10px;border:1px solid rgba(0,0,0,.1);border-radius:20px;font-size:.85rem;background:#fff;color:#1a1a2e;outline:none;cursor:pointer}
 .forum-world-select:focus{border-color:#7466ff}
-/* Forum Page (as bottom-nav page) */
-#forumPage{padding:0;overflow:hidden;display:none;flex-direction:column;height:calc(100vh - 73px)}
-#forumPage.active{display:flex}
-.forum-page-container{display:flex;flex-direction:column;height:100%;background:#f5f5f7;position:relative}
-.forum-page-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,.06)}
-.forum-page-title{font-size:1.15rem;font-weight:800;color:#1a1a2e}
-.forum-page-actions{display:flex;gap:8px}
-.forum-tabs-bar{display:flex;position:sticky;top:57px;z-index:9;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,.06)}
-#forumPage .forum-post-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px;padding-bottom:80px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
-#forumPage .forum-fab{position:absolute;bottom:20px;right:20px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#7466ff,#ff8fb3);color:#fff;border:0;font-size:1.6rem;cursor:pointer;z-index:10;display:grid;place-items:center;box-shadow:0 4px 16px rgba(116,102,255,.4);transition:transform .2s}
-#forumPage .forum-fab:active{transform:scale(.92)}
-/* Forum Homepage */
-.forum-home{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:80px}
-.forum-home.hidden{display:none}
-.forum-hero{margin:12px;padding:24px 20px;background:linear-gradient(135deg,#7466ff 0%,#9b8cff 50%,#ff8fb3 100%);border-radius:20px;color:#fff;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(116,102,255,.25)}
-.forum-hero::after{content:'';position:absolute;top:-30px;right:-20px;width:120px;height:120px;background:rgba(255,255,255,.1);border-radius:50%}
-.forum-hero h3{font-size:1.5rem;font-weight:800;margin:0 0 8px;letter-spacing:1px}
-.forum-hero p{font-size:.85rem;opacity:.9;margin:0;line-height:1.5}
-.forum-hero-badge{display:inline-block;margin-top:12px;padding:4px 12px;background:rgba(255,255,255,.2);border-radius:20px;font-size:.75rem;font-weight:600}
-.forum-section-title{font-size:1rem;font-weight:700;color:#1a1a2e;margin:20px 16px 10px;display:flex;align-items:center;justify-content:space-between}
-.forum-section-title span:last-child{font-size:.78rem;color:#7466ff;font-weight:600;cursor:pointer}
-.forum-board-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px}
-.forum-board-card{padding:16px 14px;border-radius:16px;cursor:pointer;transition:transform .15s;position:relative;overflow:hidden;border:0;text-align:left}
-.forum-board-card:active{transform:scale(.96)}
-.forum-board-card h4{font-size:.95rem;font-weight:700;margin:0 0 4px;color:#fff}
-.forum-board-card p{font-size:.72rem;opacity:.85;margin:0;color:#fff;line-height:1.4}
-.forum-board-icon{font-size:1.6rem;margin-bottom:6px;display:block}
-.forum-board-card.tide{background:linear-gradient(135deg,#667eea,#764ba2)}
-.forum-board-card.deep{background:linear-gradient(135deg,#2c5364,#0f9b8e)}
-.forum-board-card.dark{background:linear-gradient(135deg,#434343,#1a1a2e)}
-.forum-board-card.wave{background:linear-gradient(135deg,#f093fb,#f5576c)}
-.forum-board-card.evening{background:linear-gradient(135deg,#fa709a,#fee140)}
-.forum-hot-list{padding:0 12px;display:flex;flex-direction:column;gap:8px}
-.forum-hot-item{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff;border-radius:14px;cursor:pointer;transition:transform .15s;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.forum-hot-item:active{transform:scale(.98)}
-.forum-hot-rank{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;font-size:.75rem;font-weight:800;color:#fff;flex-shrink:0}
-.forum-hot-rank.r1{background:#ff6b6b}.forum-hot-rank.r2{background:#ffa94d}.forum-hot-rank.r3{background:#ffd43b;color:#1a1a2e}
-.forum-hot-rank.r4,.forum-hot-rank.r5{background:#dee2e6;color:#1a1a2e}
-.forum-hot-text{flex:1;min-width:0}
-.forum-hot-text h5{font-size:.82rem;font-weight:600;margin:0 0 2px;color:#1a1a2e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.forum-hot-text p{font-size:.72rem;color:#999;margin:0}
-.forum-hot-likes{font-size:.72rem;color:#ff6b6b;font-weight:600;flex-shrink:0}
-.forum-rules-card{margin:12px;padding:14px 16px;background:rgba(116,102,255,.06);border-radius:14px;border:1px solid rgba(116,102,255,.12)}
-.forum-rules-card h4{font-size:.85rem;font-weight:700;color:#7466ff;margin:0 0 6px}
-.forum-rules-card p{font-size:.76rem;color:#7b7890;margin:0;line-height:1.6}
-.forum-enter-btn{display:block;margin:16px auto;padding:12px 48px;background:linear-gradient(135deg,#7466ff,#ff8fb3);color:#fff;border:0;border-radius:30px;font-size:.95rem;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(116,102,255,.35);transition:transform .15s}
-.forum-enter-btn:active{transform:scale(.96)}
-.forum-feed-wrap.hidden{display:none}
 /* DM (Direct Messages) */
 .dm-role-bar{display:flex;gap:8px;padding:10px 12px;overflow-x:auto;background:rgba(255,255,255,.92);border-bottom:1px solid rgba(0,0,0,.06)}
 .dm-role-chip{flex-shrink:0;padding:6px 14px;border-radius:20px;background:rgba(116,102,255,.1);color:#7466ff;font-size:.82rem;font-weight:600;cursor:pointer;border:0;white-space:nowrap}
@@ -1261,125 +1212,32 @@ select {
           </div>
           <div id="costumeEditorWrap" class="costume-editor"></div>
         </section>
-
-        <section id="novelGamePage" class="page">
-          <div id="novelGameContainer" class="novel-container">
-            <div id="novelGameMain">
-              <div class="novel-tabs">
-                <button class="active" data-novel-tab="scripts" type="button">剧本库</button>
-                <button data-novel-tab="saves" type="button">我的存档</button>
-              </div>
-              <div id="novelGameContent">
-                <div class="novel-loading"><div class="novel-loading-spinner"></div>加载中...</div>
-              </div>
-            </div>
-            <div id="novelGameLobby" class="novel-lobby" style="display:none">
-              <div class="novel-lobby-header">
-                <h3 id="novelLobbyTitle">游戏大厅</h3>
-                <div class="subtitle" id="novelLobbySubtitle">准备开始冒险</div>
-              </div>
-              <div class="novel-lobby-body" id="novelLobbyBody"></div>
-            </div>
-            <div id="novelGameStory" class="novel-story" style="display:none">
-              <div class="novel-story-header">
-                <button class="novel-btn secondary small" id="novelStoryBack" type="button">← 返回</button>
-                <span class="round-badge" id="novelRoundBadge">第1轮</span>
-                <button class="novel-btn small" id="novelSaveBtn" type="button">保存</button>
-              </div>
-              <div class="novel-story-scroll" id="novelStoryScroll">
-                <div class="novel-story-content" id="novelStoryContent"></div>
-              </div>
-              <div class="novel-action-panel" id="novelActionPanel">
-                <div class="novel-actions" id="novelActions"></div>
-                <div class="novel-custom-action">
-                  <input type="text" id="novelCustomActionInput" placeholder="输入自定义行动..." />
-                  <button class="novel-btn" id="novelCustomActionBtn" type="button">执行</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="forumPage" class="page">
-          <div class="forum-page-container">
-            <div class="forum-page-header">
-              <span class="forum-page-title">回响环廊</span>
-              <div class="forum-world-selector">
-                <select id="forumWorldSelect" class="forum-world-select">
-                  <option value="">全部世界</option>
-                </select>
-              </div>
-              <div class="forum-page-actions">
-                <button class="forum-overlay-btn" id="forumRefreshBtn" type="button">⟳</button>
-              </div>
-            </div>
-
-            <!-- Forum Homepage -->
-            <div class="forum-home" id="forumHomePage">
-              <div class="forum-hero">
-                <h3>回响环廊</h3>
-                <p>半匿名兴趣社区。把角色动态、关系事件和世界讨论组织成声纹信息流，而不是普通备忘录列表。</p>
-                <span class="forum-hero-badge">共鸣 · 留声 · 扩音 · 回声</span>
-              </div>
-
-              <div class="forum-section-title"><span>板块导航</span><span id="forumEnterFeed">进入广场 ›</span></div>
-              <div class="forum-board-grid">
-                <button class="forum-board-card tide" data-board="tide" type="button">
-                  <span class="forum-board-icon">🌊</span>
-                  <h4>潮汐广场</h4>
-                  <p>轻量、真实、有温度的日常瞬间</p>
-                </button>
-                <button class="forum-board-card deep" data-board="deep" type="button">
-                  <span class="forum-board-icon">📖</span>
-                  <h4>深水区</h4>
-                  <p>长内容讨论，沉淀世界观与设定</p>
-                </button>
-                <button class="forum-board-card dark" data-board="dark" type="button">
-                  <span class="forum-board-icon">🎭</span>
-                  <h4>暗房</h4>
-                  <p>匿名弹幕，只留公共情绪趋势</p>
-                </button>
-                <button class="forum-board-card wave" data-board="wave" type="button">
-                  <span class="forum-board-icon">📡</span>
-                  <h4>今日浪潮</h4>
-                  <p>每日热点话题与趋势榜</p>
-                </button>
-                <button class="forum-board-card evening" data-board="evening" type="button">
-                  <span class="forum-board-icon">🌙</span>
-                  <h4>回响晚报</h4>
-                  <p>编辑精选，一天故事回顾</p>
-                </button>
-              </div>
-
-              <div class="forum-section-title"><span>热议榜</span><span id="forumHotMore">查看更多 ›</span></div>
-              <div class="forum-hot-list" id="forumHotList">
-                <div class="forum-hot-item" data-post-id=""><span class="forum-hot-rank r1">1</span><div class="forum-hot-text"><h5>加载中...</h5><p>正在获取热议内容</p></div><span class="forum-hot-likes">♥ --</span></div>
-              </div>
-
-              <div class="forum-rules-card">
-                <h4>互动规则</h4>
-                <p>共鸣=点赞 · 留声=收藏 · 扩音=转发 · 回声者=作者。争议内容进入防杠护盾，发言需要能举证。禁止攻击、引战和隐私曝光。</p>
-              </div>
-
-              <button class="forum-enter-btn" id="forumEnterBtn" type="button">进入社区广场</button>
-            </div>
-
-            <!-- Forum Feed (tabs + post list) -->
-            <div class="forum-feed-wrap hidden" id="forumFeedWrap">
-              <div class="forum-tabs-bar">
-                <button class="forum-tab-item active" data-forum-tab="following" type="button">关注</button>
-                <button class="forum-tab-item" data-forum-tab="recommended" type="button">推荐</button>
-                <button class="forum-tab-item" data-forum-tab="gossip" type="button">八卦</button>
-              </div>
-              <div class="forum-post-list" id="forumPostList">
-                <div class="forum-loading">正在加载...</div>
-              </div>
-            </div>
-
-            <button class="forum-fab" id="forumFab" type="button">+</button>
-          </div>
-        </section>
       </main>
+
+      <!-- Forum Full-screen Overlay -->
+      <div id="forumOverlay" class="forum-overlay">
+        <div class="forum-overlay-header">
+          <span class="forum-overlay-title">论坛</span>
+          <div class="forum-world-selector">
+            <select id="forumWorldSelect" class="forum-world-select">
+              <option value="">全部世界</option>
+            </select>
+          </div>
+          <div class="forum-overlay-actions">
+            <button class="forum-overlay-btn" id="forumRefreshBtn" type="button">⟳</button>
+            <button class="forum-overlay-btn" id="forumCloseBtn" type="button">×</button>
+          </div>
+        </div>
+        <div class="forum-tabs-bar">
+          <button class="forum-tab-item active" data-forum-tab="following" type="button">关注</button>
+          <button class="forum-tab-item" data-forum-tab="recommended" type="button">推荐</button>
+          <button class="forum-tab-item" data-forum-tab="gossip" type="button">八卦</button>
+        </div>
+        <div class="forum-post-list" id="forumPostList">
+          <div class="forum-loading">正在加载...</div>
+        </div>
+        <button class="forum-fab" id="forumFab" type="button">+</button>
+      </div>
 
       <!-- Forum Post Detail -->
       <div id="forumPostDetail" class="forum-post-detail">
@@ -1412,8 +1270,6 @@ select {
         <button class="active" data-page="chatPage" type="button">聊天</button>
         <button data-page="rolesPage" type="button">角色</button>
         <button data-page="phonePage" type="button">手机</button>
-        <button data-page="forumPage" type="button">论坛</button>
-        <button data-page="novelGamePage" type="button">文游</button>
         <button data-page="memoryPage" type="button">记忆</button>
         <button data-page="profilePage" type="button">我的</button>
       </nav>
@@ -1441,10 +1297,6 @@ select {
     </dialog>
 
     <div id="toast" class="toast" role="status"></div>
-
-    <div id="novelModal" class="novel-modal-overlay">
-      <div class="novel-modal" id="novelModalContent"></div>
-    </div>
 
     <script>
 /* ===== config.js ===== */
@@ -2809,7 +2661,6 @@ const bindEvents = () => {
     if (btn.dataset.page === 'communityPage') renderCommunity();
     if (btn.dataset.page === 'phonePage') renderPhoneDesktop();
     if (btn.dataset.page === 'memoryPage') renderMemories();
-    if (btn.dataset.page === 'forumPage' && typeof openForumPage === 'function') openForumPage();
   });
 
   document.addEventListener('click', async (event) => {
@@ -3092,6 +2943,5 @@ init();
   <script src="/forum-avatars-base64.js"></script>
   <script src="/forum.js"></script>
   <script src="/profile.js"></script>
-  <script src="/novel-game.js"></script>
   </body>
 </html>
