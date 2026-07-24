@@ -1,0 +1,647 @@
+:root {
+  --novel-primary: #7466ff;
+  --novel-accent: #ff8fb3;
+  --novel-bg: #f7f5ff;
+  --novel-surface: rgba(255, 255, 255, 0.92);
+  --novel-text: #232136;
+  --novel-muted: #7b7890;
+  --novel-border: rgba(116, 102, 255, 0.15);
+  --novel-danger: #e95656;
+  --novel-shadow: 0 10px 24px rgba(35, 33, 54, 0.06);
+}
+
+/* ===== Novel Game Page ===== */
+#novelGamePage {
+  padding: 0;
+  overflow: hidden;
+  display: none;
+  flex-direction: column;
+  height: calc(100vh - 73px);
+}
+
+#novelGamePage.active {
+  display: flex;
+}
+
+.novel-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 14px 86px;
+}
+
+/* ===== Header ===== */
+.novel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  background: rgba(247, 245, 255, 0.9);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--novel-border);
+}
+
+.novel-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.novel-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.novel-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--novel-primary);
+  color: #fff;
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.novel-btn:active {
+  transform: scale(0.97);
+}
+
+.novel-btn.secondary {
+  background: #efedf8;
+  color: var(--novel-text);
+}
+
+.novel-btn.small {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+/* ===== Tabs ===== */
+.novel-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--novel-bg);
+  border-bottom: 1px solid var(--novel-border);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.novel-tabs button {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(116, 102, 255, 0.1);
+  color: var(--novel-primary);
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+}
+
+.novel-tabs button.active {
+  background: var(--novel-primary);
+  color: #fff;
+}
+
+/* ===== Script Cards ===== */
+.novel-script-list {
+  display: grid;
+  gap: 12px;
+  padding: 14px 0;
+}
+
+.novel-script-card {
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--novel-surface);
+  border: 1px solid var(--novel-border);
+  box-shadow: var(--novel-shadow);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.novel-script-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgba(35, 33, 54, 0.1);
+}
+
+.novel-script-cover {
+  height: 140px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.novel-script-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 60%);
+}
+
+.novel-script-cover-text {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  right: 14px;
+  color: #fff;
+  z-index: 1;
+}
+
+.novel-script-cover-text h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+
+.novel-script-cover-text .tagline {
+  font-size: 12px;
+  opacity: 0.9;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+.novel-script-info {
+  padding: 12px 14px 14px;
+}
+
+.novel-script-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.novel-tag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(116, 102, 255, 0.1);
+  color: var(--novel-primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.novel-tag.difficulty-easy { background: rgba(67, 233, 123, 0.15); color: #2cb76a; }
+.novel-tag.difficulty-medium { background: rgba(255, 193, 7, 0.15); color: #c78c00; }
+.novel-tag.difficulty-hard { background: rgba(233, 86, 86, 0.15); color: #c0392b; }
+
+.novel-script-desc {
+  color: var(--novel-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ===== Save Slots ===== */
+.novel-save-list {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+}
+
+.novel-save-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 18px;
+  background: var(--novel-surface);
+  border: 1px solid var(--novel-border);
+  box-shadow: var(--novel-shadow);
+  cursor: pointer;
+}
+
+.novel-save-info h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.novel-save-meta {
+  color: var(--novel-muted);
+  font-size: 12px;
+}
+
+.novel-save-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ===== Create Character Form ===== */
+.novel-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px 0;
+}
+
+.novel-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--novel-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.novel-form input,
+.novel-form textarea,
+.novel-form select {
+  width: 100%;
+  border: 1px solid var(--novel-border);
+  border-radius: 16px;
+  padding: 11px 12px;
+  outline: none;
+  background: #fff;
+  color: var(--novel-text);
+  font: inherit;
+}
+
+.novel-form textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.novel-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.novel-stat-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--novel-border);
+}
+
+.novel-stat-input span {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.novel-stat-input input {
+  width: 70px;
+  text-align: center;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--novel-border);
+}
+
+/* ===== Game Lobby ===== */
+.novel-lobby {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+}
+
+.novel-lobby.active {
+  display: flex;
+}
+
+.novel-lobby-header {
+  padding: 14px 16px;
+  background: linear-gradient(135deg, var(--novel-primary), #9a8cff);
+  color: #fff;
+}
+
+.novel-lobby-header h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.novel-lobby-header .subtitle {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.novel-lobby-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.novel-status-panel {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.novel-status-item {
+  text-align: center;
+  padding: 12px 8px;
+  border-radius: 16px;
+  background: var(--novel-surface);
+  border: 1px solid var(--novel-border);
+}
+
+.novel-status-item .value {
+  display: block;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--novel-primary);
+}
+
+.novel-status-item .label {
+  font-size: 11px;
+  color: var(--novel-muted);
+  margin-top: 2px;
+}
+
+.novel-npc-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.novel-npc-card {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: var(--novel-surface);
+  border: 1px solid var(--novel-border);
+}
+
+.novel-npc-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffcadb, #c7c2ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.novel-npc-info h4 {
+  margin: 0 0 2px;
+  font-size: 14px;
+}
+
+.novel-npc-info .attitude {
+  font-size: 12px;
+  color: var(--novel-muted);
+}
+
+.novel-npc-info .trust-bar {
+  height: 4px;
+  background: rgba(116, 102, 255, 0.1);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.novel-npc-info .trust-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--novel-primary), var(--novel-accent));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ===== Story Screen ===== */
+.novel-story {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  background: var(--novel-bg);
+}
+
+.novel-story.active {
+  display: flex;
+}
+
+.novel-story-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(247, 245, 255, 0.9);
+  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--novel-border);
+}
+
+.novel-story-header .round-badge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--novel-primary);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.novel-story-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 14px 120px;
+}
+
+.novel-story-content {
+  line-height: 1.8;
+  font-size: 15px;
+  color: var(--novel-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.novel-story-content h4 {
+  margin: 16px 0 8px;
+  color: var(--novel-primary);
+  font-size: 15px;
+}
+
+.novel-story-content .stat-change {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(67, 233, 123, 0.15);
+  color: #2cb76a;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0 2px;
+}
+
+.novel-story-content .stat-change.negative {
+  background: rgba(233, 86, 86, 0.15);
+  color: #c0392b;
+}
+
+.novel-action-panel {
+  position: fixed;
+  right: calc((100vw - min(100vw, 430px)) / 2);
+  bottom: calc(58px + var(--safe-bottom));
+  left: calc((100vw - min(100vw, 430px)) / 2);
+  width: min(100vw, 430px);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid var(--novel-border);
+  backdrop-filter: blur(18px);
+  z-index: 25;
+}
+
+.novel-actions {
+  display: grid;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.novel-action-btn {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--novel-surface);
+  border: 1px solid var(--novel-border);
+  color: var(--novel-text);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.novel-action-btn:hover {
+  background: rgba(116, 102, 255, 0.08);
+  border-color: var(--novel-primary);
+}
+
+.novel-action-btn.primary {
+  background: linear-gradient(135deg, var(--novel-primary), #9a8cff);
+  color: #fff;
+  border-color: transparent;
+}
+
+.novel-custom-action {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.novel-custom-action input {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--novel-border);
+  background: #fff;
+  font: inherit;
+}
+
+/* ===== Loading ===== */
+.novel-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--novel-muted);
+}
+
+.novel-loading-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(116, 102, 255, 0.2);
+  border-top-color: var(--novel-primary);
+  border-radius: 50%;
+  animation: novel-spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes novel-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== Empty State ===== */
+.novel-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--novel-muted);
+}
+
+.novel-empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+/* ===== Modal ===== */
+.novel-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(35, 33, 54, 0.42);
+  z-index: 60;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.novel-modal-overlay.active {
+  display: flex;
+}
+
+.novel-modal {
+  width: min(92vw, 390px);
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--novel-surface);
+  border-radius: 24px;
+  padding: 20px;
+  box-shadow: 0 20px 48px rgba(35, 33, 54, 0.2);
+}
+
+.novel-modal h3 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
+
+.novel-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* ===== Inventory ===== */
+.novel-inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px 0;
+}
+
+.novel-item-card {
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--novel-surface);
+  border: 1px solid var(--novel-border);
+  text-align: center;
+}
+
+.novel-item-card .item-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.novel-item-card .item-name {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.novel-item-card .item-desc {
+  font-size: 11px;
+  color: var(--novel-muted);
+  margin-top: 2px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 380px) {
+  .novel-status-panel {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .novel-inventory-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
