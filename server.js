@@ -36,6 +36,8 @@ const communityRoles = [];
 const userMemories = new Map();
 const userProfiles = new Map();
 const directMessages = new Map();
+const novelGameSaves = new Map();
+const novelGameStates = new Map();
 const stats = { totalRechargeCny: 0, totalBeansConsumed: 0, totalChatCount: 0, totalRefundBeans: 0 };
 
 const DATA_DIR = process.env.DATA_DIR || path.join(path.dirname(fileURLToPath(import.meta.url)), '.data');
@@ -53,6 +55,7 @@ const saveDataNow = () => {
       memories: Object.fromEntries([...userMemories.entries()].map(([userId, list]) => [userId, list.slice(-300)])),
       profiles: Object.fromEntries([...userProfiles.entries()].map(([userId, p]) => [userId, p])),
       messages: Object.fromEntries([...directMessages.entries()].map(([userId, list]) => [userId, list.slice(-200)])),
+      novelGames: Object.fromEntries([...novelGameSaves.entries()].map(([userId, list]) => [userId, list.slice(-50)])),
       stats
     };
     fs.writeFileSync(DATA_FILE, JSON.stringify(payload, null, 2), 'utf8');
@@ -101,6 +104,11 @@ const loadData = () => {
     if (payload.messages && typeof payload.messages === 'object') {
       for (const [userId, list] of Object.entries(payload.messages)) {
         if (Array.isArray(list)) directMessages.set(String(userId).slice(0, 80), list.slice(-200));
+      }
+    }
+    if (payload.novelGames && typeof payload.novelGames === 'object') {
+      for (const [userId, list] of Object.entries(payload.novelGames)) {
+        if (Array.isArray(list)) novelGameSaves.set(String(userId).slice(0, 80), list.slice(-50));
       }
     }
   } catch (error) {
@@ -871,6 +879,223 @@ app.post('/api/messages/reply', async (req, res) => {
   } catch (error) {
     ok(res, { reply: '抱歉，我现在不太方便回复，稍后再聊~', error: error.message });
   }
+});
+
+/* === Novel Game (文游) Module === */
+
+const NOVEL_GAMES_DIR = path.join(__dirname, 'novel-games');
+const loadedScripts = new Map();
+
+const loadNovelScripts = () => {
+  try {
+    if (!fs.existsSync(NOVEL_GAMES_DIR)) return;
+    const files = fs.readdirSync(NOVEL_GAMES_DIR).filter(f => f.endsWith('.json'));
+    for (const file of files) {
+      try {
+        const content = fs.readFileSync(path.join(NOVEL_GAMES_DIR, file), 'utf8');
+        const script = JSON.parse(content);
+        if (script.id) loadedScripts.set(script.id, script);
+      } catch (e) { console.warn('加载剧本失败:', file, e.message); }
+    }
+  } catch (e) { console.warn('读取剧本目录失败:', e.message); }
+};
+loadNovelScripts();
+
+app.get('/api/novel-games', (_req, res) => {
+  const list = [];
+  for (const script of loadedScripts.values()) {
+    list.push({
+      id: script.id,
+      name: script.name,
+      category: script.category,
+      tags: script.tags,
+      difficulty: script.difficulty,
+      description: script.description,
+      coverGradient: script.coverGradient,
+      accentColor: script.accentColor
+    });
+  }
+  ok(res, { list, total: list.length });
+});
+
+app.get('/api/novel-games/:id', (req, res) => {
+  const script = loadedScripts.get(req.params.id);
+  if (!script) return fail(res, 404, 4041, '剧本不存在');
+  ok(res, script);
+});
+
+app.get('/api/novel-games/saves/list', (req, res) => {
+  const list = novelGameSaves.get(req.userId) || [];
+  ok(res, { list: list.map(s => ({ id: s.id, scriptId: s.scriptId, scriptName: s.scriptName, playerName: s.player?.name, round: s.round || 0, updatedAt: s.updatedAt })) });
+});
+
+app.get('/api/novel-games/save/:saveId', (req, res) => {
+  const list = novelGameSaves.get(req.userId) || [];
+  const save = list.find(s => s.id === req.params.saveId);
+  if (!save) return fail(res, 404, 4042, '存档不存在');
+  ok(res, save);
+});
+
+app.post('/api/novel-games/save', (req, res) => {
+  const { id, scriptId, scriptName, player, state, round, history, currentWorld } = req.body || {};
+  if (!scriptId) return fail(res, 400, 4007, '缺少剧本ID');
+  const list = novelGameSaves.get(req.userId) || [];
+  const existingIndex = list.findIndex(s => s.id === id);
+  const saveData = {
+    id: id || randomUUID(),
+    scriptId,
+    scriptName: String(scriptName || '').slice(0, 60),
+    player: player || {},
+    state: state || {},
+    round: Number(round) || 0,
+    history: Array.isArray(history) ? history.slice(-100) : [],
+    currentWorld: currentWorld || null,
+    updatedAt: new Date().toISOString()
+  };
+  if (existingIndex >= 0) list[existingIndex] = saveData;
+  else { list.unshift(saveData); if (list.length > 50) list.length = 50; }
+  novelGameSaves.set(req.userId, list);
+  saveData();
+  ok(res, saveData, '存档已保存');
+});
+
+app.delete('/api/novel-games/save/:saveId', (req, res) => {
+  const list = novelGameSaves.get(req.userId) || [];
+  const filtered = list.filter(s => s.id !== req.params.saveId);
+  novelGameSaves.set(req.userId, filtered);
+  saveData();
+  ok(res, { deleted: list.length - filtered.length }, '存档已删除');
+});
+
+/* Build system prompt for novel game round */
+const buildNovelGamePrompt = (script, save, playerAction) => {
+  const npcBlock = (script.npcs || []).map(n => {
+    const s = save.state?.npcs?.[n.id] || {};
+    return `【${n.name}】${n.role}\n外貌：${n.appearance}\n性格：${n.surface}\n深层：${n.deep}\n当前对玩家态度：${s.attitude || n.initialAttitude}\n信任度：${s.trust || 0}\n`;
+  }).join('\n');
+
+  const statBlock = Object.entries(save.state?.player?.stats || {}).map(([k, v]) => `${k}:${v}`).join(' ');
+  const invBlock = (save.state?.player?.inventory || []).join('、');
+  const worldInfo = save.currentWorld ? script.worlds?.find(w => w.id === save.currentWorld) : null;
+
+  let prompt = script.systemPrompt || '';
+  prompt += '\n\n【当前游戏状态】\n';
+  prompt += `剧本：${script.name}\n`;
+  if (worldInfo) prompt += `当前世界：${worldInfo.name}（${worldInfo.level}）\n${worldInfo.setting}\n目标：${worldInfo.objective}\n`;
+  prompt += `玩家：${save.player?.name || '未命名'}\n`;
+  prompt += `属性：${statBlock}\n`;
+  if (invBlock) prompt += `背包：${invBlock}\n`;
+  prompt += `轮次：第${save.round || 0}轮\n`;
+  if (save.history && save.history.length > 0) {
+    prompt += '\n【最近剧情摘要】\n';
+    prompt += save.history.slice(-5).map((h, i) => `${i + 1}. ${h.summary || h.action || '...'}`).join('\n');
+  }
+  prompt += '\n\n【NPC状态】\n' + npcBlock;
+  if (save.state?.pendingEvents?.length) {
+    prompt += '\n\n【待处理事项】\n' + save.state.pendingEvents.slice(-5).join('\n');
+  }
+  prompt += `\n\n【玩家本轮行动】\n${playerAction}\n\n请根据以上信息生成本轮游戏内容。`;
+  return prompt;
+};
+
+/* Parse stat changes from AI reply */
+const parseStatChanges = (text) => {
+  const changes = [];
+  const regex = /\[\s*([^\]]+?)\s*([\+\-]\d+)\s*\]/g;
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    changes.push({ stat: match[1].trim(), delta: Number(match[2]) });
+  }
+  return changes;
+};
+
+app.post('/api/novel-games/action', async (req, res) => {
+  const { saveId, action, customAction } = req.body || {};
+  if (!saveId) return fail(res, 400, 4008, '缺少存档ID');
+  const list = novelGameSaves.get(req.userId) || [];
+  const save = list.find(s => s.id === saveId);
+  if (!save) return fail(res, 404, 4043, '存档不存在');
+
+  const script = loadedScripts.get(save.scriptId);
+  if (!script) return fail(res, 404, 4044, '剧本不存在');
+
+  const playerAction = customAction || action || '继续探索';
+  const sysPrompt = buildNovelGamePrompt(script, save, playerAction);
+
+  try {
+    if (!config.upstreamKey || config.upstreamKey.includes('请填写')) {
+      return ok(res, {
+        content: `【第${(save.round || 0) + 1}轮】\n\n你选择了：${playerAction}\n\n（AI服务未配置，无法生成剧情。请在.env中配置UPSTREAM_API_KEY）\n\n【可选行动】\n1. 继续探索\n2. 与NPC交谈\n3. 查看背包\n4. 休息恢复\n5. 【自定义行动】`,
+        statChanges: [],
+        round: (save.round || 0) + 1
+      });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    const apiResp = await fetch(config.upstreamBase + '/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + config.upstreamKey },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: config.upstreamModel,
+        stream: false,
+        messages: [
+          { role: 'system', content: sysPrompt },
+          { role: 'user', content: playerAction }
+        ]
+      })
+    }).finally(() => clearTimeout(timeout));
+
+    if (!apiResp.ok) throw new Error('上游API异常: ' + apiResp.status);
+    const apiData = await apiResp.json();
+    const content = apiData.choices?.[0]?.message?.content || 'AI生成内容为空';
+    const statChanges = parseStatChanges(content);
+
+    ok(res, { content, statChanges, round: (save.round || 0) + 1 });
+  } catch (error) {
+    ok(res, { content: '剧情生成失败：' + error.message + '\n\n请重试或检查AI服务配置。', statChanges: [], round: save.round || 0, error: error.message });
+  }
+});
+
+app.post('/api/novel-games/apply-changes', (req, res) => {
+  const { saveId, changes, historyEntry } = req.body || {};
+  if (!saveId) return fail(res, 400, 4009, '缺少存档ID');
+  const list = novelGameSaves.get(req.userId) || [];
+  const save = list.find(s => s.id === saveId);
+  if (!save) return fail(res, 404, 4045, '存档不存在');
+
+  if (!save.state) save.state = {};
+  if (!save.state.player) save.state.player = {};
+  if (!save.state.player.stats) save.state.player.stats = {};
+  if (!save.state.npcs) save.state.npcs = {};
+
+  if (changes) {
+    for (const c of changes) {
+      if (c.npcId && c.stat === 'trust') {
+        if (!save.state.npcs[c.npcId]) save.state.npcs[c.npcId] = {};
+        save.state.npcs[c.npcId].trust = (save.state.npcs[c.npcId].trust || 0) + c.delta;
+      } else if (c.stat) {
+        const current = Number(save.state.player.stats[c.stat]) || 0;
+        save.state.player.stats[c.stat] = current + c.delta;
+      }
+    }
+  }
+
+  save.round = (save.round || 0) + 1;
+  if (historyEntry) {
+    if (!save.history) save.history = [];
+    save.history.push(historyEntry);
+    if (save.history.length > 100) save.history = save.history.slice(-100);
+  }
+  save.updatedAt = new Date().toISOString();
+
+  const idx = list.findIndex(s => s.id === saveId);
+  if (idx >= 0) list[idx] = save;
+  novelGameSaves.set(req.userId, list);
+  saveData();
+
+  ok(res, save, '状态已更新');
 });
 
 app.listen(PORT, HOST, () => console.log(`Mochi-phone 已启动：http://localhost:${PORT}`));
