@@ -1611,394 +1611,452 @@ async function handleAdminLogin() {
 
 // ==================== 论坛系统 ====================
 const ForumState = {
+  active: false,
   currentTab: 'recommended',
-  posts: [],
-  page: 1,
-  loading: false,
-  hasMore: true,
+  posts: { following: [], recommended: [], gossip: [] },
+  currentRole: null,
+  isLoading: false,
+  sideMenuOpen: false,
+  userProfile: { posts: 0, followers: 0, following: 0, likes: 0, avatar: null },
+  currentView: 'feed',
+  userPosts: [],
+  commentsCache: {},
   currentPostId: null,
-  previousPage: 'profile'
+  notifCache: null,
+  loading: { following: false, recommended: false, gossip: false },
+  followedRoles: [],
+  likedPosts: [],
+  savedPosts: [],
+  profileTab: 'posts',
+  previousPage: 'home'
 };
+
+// 渐变背景配色
+const FORUM_GRADIENTS = [
+  'linear-gradient(135deg, #FFB6C1, #FF69B4)',
+  'linear-gradient(135deg, #DDA0DD, #BA55D3)',
+  'linear-gradient(135deg, #87CEEB, #4682B4)',
+  'linear-gradient(135deg, #98FB98, #3CB371)',
+  'linear-gradient(135deg, #F0E68C, #DAA520)',
+  'linear-gradient(135deg, #FFA07A, #FF6347)',
+  'linear-gradient(135deg, #E6E6FA, #9370DB)',
+  'linear-gradient(135deg, #AFEEEE, #48D1CC)'
+];
 
 // 打开论坛
 function openForum() {
-  ForumState.previousPage = AppState.currentPage;
-  showPage('forum');
-  ForumState.currentTab = 'recommended';
-  ForumState.posts = [];
-  ForumState.page = 1;
-  ForumState.hasMore = true;
-  switchForumTab('recommended');
+  try {
+    ForumState.previousPage = AppState.currentPage;
+    ForumState.active = true;
+    showPage('forum');
+    ForumState.currentTab = 'recommended';
+    ForumState.currentView = 'feed';
+    
+    // 初始化帖子
+    if (ForumState.posts.recommended.length === 0) {
+      generateSamplePosts('recommended');
+    }
+    
+    renderForumFeed();
+  } catch (err) {
+    console.error('openForum error:', err);
+    showToast('论坛加载失败');
+  }
 }
 
 // 返回上一页
 function goBackFromForum() {
+  ForumState.active = false;
   showPage(ForumState.previousPage);
 }
 
 // 切换论坛tab
 function switchForumTab(tab) {
-  ForumState.currentTab = tab;
-  ForumState.posts = [];
-  ForumState.page = 1;
-  ForumState.hasMore = true;
-  
-  // 更新tab样式
-  document.querySelectorAll('.forum-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.tab === tab);
-  });
-  
-  loadForumPosts();
-}
-
-// 加载帖子列表
-async function loadForumPosts(refresh = false) {
-  if (ForumState.loading) return;
-  if (!ForumState.hasMore && !refresh) return;
-  
-  ForumState.loading = true;
-  document.getElementById('forumLoading').style.display = 'flex';
-  
-  if (refresh) {
-    ForumState.posts = [];
-    ForumState.page = 1;
-    ForumState.hasMore = true;
-  }
-  
   try {
-    const res = await API.get('/api/forum/posts', {
-      tab: ForumState.currentTab,
-      page: ForumState.page,
-      pageSize: 10
+    ForumState.currentTab = tab;
+    
+    // 更新tab样式
+    document.querySelectorAll('.forum-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === tab);
     });
     
-    if (res.success && res.data) {
-      const newPosts = res.data.list || [];
-      
-      if (newPosts.length === 0) {
-        ForumState.hasMore = false;
-      } else {
-        ForumState.posts = [...ForumState.posts, ...newPosts];
-        ForumState.page++;
-      }
-      
-      renderForumPosts();
+    // 如果该tab没有帖子，生成一些
+    if (ForumState.posts[tab].length === 0) {
+      generateSamplePosts(tab);
     }
+    
+    renderForumFeed();
   } catch (err) {
-    console.error('加载帖子失败:', err);
-    // 如果是第一页加载失败，生成一些示例帖子
-    if (ForumState.page === 1) {
-      generateSamplePosts();
-    }
-  } finally {
-    ForumState.loading = false;
-    document.getElementById('forumLoading').style.display = 'none';
+    console.error('switchForumTab error:', err);
   }
 }
 
-// 生成示例帖子（API失败时使用）
-function generateSamplePosts() {
-  const samplePosts = [
-    {
-      id: 1,
-      author_name: '温柔学姐',
-      author_avatar: '',
-      author_tag: '角色',
-      content: '今天在图书馆待了一下午，看了好多书～ 阳光透过窗户洒在书页上，感觉特别治愈。大家周末都在做什么呀？📚✨',
-      images: [],
-      likes: 128,
-      comments: 23,
-      saves: 45,
-      is_liked: false,
-      is_saved: false,
-      created_at: Date.now() - 3600000
-    },
-    {
-      id: 2,
-      author_name: '草莓味晚风',
-      author_avatar: '',
-      author_tag: '推荐',
-      content: '今天吃到了超好吃的草莓蛋糕！🍰 甜而不腻，奶油超级绵密～ 人生小确幸就是这么简单！#美食分享# #今日份快乐#',
-      images: [],
-      likes: 256,
-      comments: 45,
-      saves: 89,
-      is_liked: false,
-      is_saved: false,
-      created_at: Date.now() - 7200000
-    },
-    {
-      id: 3,
-      author_name: '傲娇大小姐',
-      author_avatar: '',
-      author_tag: '角色',
-      content: '哼，今天的下午茶还不错...才不是特意给你带的呢！只是买多了而已！😤 #傲娇日常#',
-      images: [],
-      likes: 312,
-      comments: 67,
-      saves: 123,
-      is_liked: false,
-      is_saved: false,
-      created_at: Date.now() - 10800000
-    }
-  ];
+// 生成示例帖子
+function generateSamplePosts(tab) {
+  const templates = {
+    following: [
+      { authorName: '月光下的猫', authorTag: '认证作者', content: '今天天气不错，心情也很好☀️', hasImage: true },
+      { authorName: '星河滚烫', authorTag: '优质作者', content: '刚读完一本书，感触挺深的。', hasImage: true },
+      { authorName: '云朵邮局', authorTag: '萌新', content: '下班路上的晚霞太美了。', hasImage: false }
+    ],
+    recommended: [
+      { authorName: '人间清醒', authorTag: '情感博主', content: '今天想认真记录一下最近的心境变化。这段时间经历了很多，有起有落，但回头看看，每一段经历都让我成长了不少。\n\n以前总觉得时间还很长，很多事情可以慢慢来。但现在越来越意识到，当下的每一刻都是独一无二的。', hasImage: true },
+      { authorName: '落日余晖', authorTag: '生活博主', content: '终于把拖延了很久的事情做完了，爽！💪', hasImage: false },
+      { authorName: '海盐焦糖', authorTag: '美食博主', content: '今天的天空也太好看了吧，随手拍都是壁纸级别的☁️', hasImage: true },
+      { authorName: '月亮邮递员', authorTag: '治愈系', content: '深夜了，睡不着，来碎碎念一下。', hasImage: false },
+      { authorName: '三餐四季', authorTag: '日常', content: '今天遇到一件有趣的事，忍不住想分享。', hasImage: true }
+    ],
+    gossip: [
+      { authorName: '吃瓜群众', authorTag: '八卦达人', content: '听说最近有个大瓜，有人知道吗？', hasImage: false },
+      { authorName: '匿名用户', authorTag: '匿名', content: '今天看到一件很无语的事...', hasImage: false },
+      { authorName: '福尔摩斯', authorTag: '侦探', content: '根据我的推理，事情应该是这样的...', hasImage: true }
+    ]
+  };
   
-  ForumState.posts = samplePosts;
-  renderForumPosts();
+  const posts = templates[tab] || templates.recommended;
+  ForumState.posts[tab] = posts.map((p, i) => ({
+    id: Date.now() + i,
+    authorName: p.authorName,
+    authorTag: p.authorTag,
+    content: p.content,
+    hasImage: p.hasImage,
+    imageIndex: Math.floor(Math.random() * 8),
+    likes: Math.floor(Math.random() * 1000),
+    comments: Math.floor(Math.random() * 100),
+    reposts: Math.floor(Math.random() * 50),
+    views: Math.floor(Math.random() * 10000),
+    time: formatTime(Date.now() - Math.random() * 86400000),
+    liked: false,
+    saved: false,
+    verified: i === 0
+  }));
 }
 
-// 渲染帖子列表
-function renderForumPosts() {
-  const container = document.getElementById('forumPosts');
-  
-  if (ForumState.posts.length === 0) {
-    container.innerHTML = `
-      <div class="forum-empty">
-        <div class="empty-icon">📝</div>
-        <div class="empty-text">还没有帖子</div>
-        <div class="empty-tip">下拉刷新生成新帖子</div>
-      </div>
-    `;
-    return;
-  }
-  
-  container.innerHTML = ForumState.posts.map(post => `
-    <div class="forum-post" onclick="openPostDetail(${post.id})">
-      <div class="post-header">
-        <div class="post-author">
-          <div class="post-avatar">${post.author_name?.[0] || '?'}</div>
-          <div class="post-author-info">
-            <div class="post-author-name">
-              ${post.author_name || '匿名用户'}
-              ${post.author_tag ? `<span class="post-author-tag">${post.author_tag}</span>` : ''}
-            </div>
-            <div class="post-time">${formatTime(post.created_at)}</div>
-          </div>
-        </div>
-      </div>
-      <div class="post-content">${post.content || ''}</div>
-      ${post.images && post.images.length > 0 ? `
-        <div class="post-images">
-          ${post.images.map(img => `<div class="post-image" style="background: linear-gradient(135deg, #FFB6C1, #FFC0CB);"></div>`).join('')}
-        </div>
-      ` : ''}
-      <div class="post-actions">
-        <div class="post-action ${post.is_liked ? 'active' : ''}" onclick="event.stopPropagation(); togglePostLike(${post.id})">
-          <span class="action-icon">${post.is_liked ? '❤️' : '🤍'}</span>
-          <span class="action-count">${post.likes || 0}</span>
-        </div>
-        <div class="post-action" onclick="event.stopPropagation(); openPostDetail(${post.id})">
-          <span class="action-icon">💬</span>
-          <span class="action-count">${post.comments || 0}</span>
-        </div>
-        <div class="post-action ${post.is_saved ? 'active' : ''}" onclick="event.stopPropagation(); togglePostSave(${post.id})">
-          <span class="action-icon">${post.is_saved ? '⭐' : '☆'}</span>
-          <span class="action-count">${post.saves || 0}</span>
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-// 点赞帖子
-async function togglePostLike(postId) {
-  const post = ForumState.posts.find(p => p.id === postId);
-  if (!post) return;
-  
-  // 乐观更新
-  post.is_liked = !post.is_liked;
-  post.likes = Math.max(0, post.likes + (post.is_liked ? 1 : -1));
-  renderForumPosts();
-  
+// 渲染帖子流
+function renderForumFeed() {
   try {
-    await API.post(`/api/forum/posts/${postId}/like`);
+    const container = document.getElementById('forumPosts');
+    const tab = ForumState.currentTab;
+    const posts = ForumState.posts[tab] || [];
+    
+    if (posts.length === 0) {
+      container.innerHTML = `
+        <div class="forum-empty">
+          <div class="empty-icon">📝</div>
+          <div class="empty-text">还没有帖子</div>
+          <button class="sf-generate-btn" onclick="generateMorePosts('${tab}')">
+            ✨ 生成更多
+          </button>
+        </div>
+      `;
+      return;
+    }
+    
+    container.innerHTML = posts.map(post => renderPostCard(post)).join('');
+    
+    // 绑定事件
+    container.querySelectorAll('.sf-post').forEach(postEl => {
+      const postId = parseInt(postEl.dataset.postId);
+      
+      postEl.addEventListener('click', () => {
+        openPostDetail(postId);
+      });
+      
+      postEl.querySelectorAll('[data-action]').forEach(actionEl => {
+        actionEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const action = actionEl.dataset.action;
+          handlePostAction(postId, action);
+        });
+      });
+    });
   } catch (err) {
-    // 失败回滚
-    post.is_liked = !post.is_liked;
-    post.likes = Math.max(0, post.likes + (post.is_liked ? 1 : -1));
-    renderForumPosts();
-    showToast('操作失败');
+    console.error('renderForumFeed error:', err);
   }
 }
 
-// 收藏帖子
-async function togglePostSave(postId) {
-  const post = ForumState.posts.find(p => p.id === postId);
-  if (!post) return;
+// 渲染帖子卡片
+function renderPostCard(post) {
+  const imageGrad = post.hasImage ? FORUM_GRADIENTS[post.imageIndex % 8] : '';
+  const likedClass = post.liked ? ' liked' : '';
+  const savedClass = post.saved ? ' saved' : '';
+  const verifiedHtml = post.verified ? '<span class="sf-post-verified">✓</span>' : '';
   
-  // 乐观更新
-  post.is_saved = !post.is_saved;
-  post.saves = Math.max(0, post.saves + (post.is_saved ? 1 : -1));
-  renderForumPosts();
+  let html = `<div class="sf-post" data-post-id="${post.id}">`;
+  html += `<div class="sf-post-header">`;
+  html += `<div class="sf-post-avatar" style="background: ${FORUM_GRADIENTS[(post.id % 8)]}">${post.authorName?.[0] || '?'}</div>`;
+  html += `<div class="sf-post-meta">`;
+  html += `<span class="sf-post-name">${post.authorName || '匿名'}${verifiedHtml}</span>`;
+  html += `<span class="sf-post-handle">${post.authorTag || '普通用户'}</span>`;
+  html += `</div>`;
+  html += `<span class="sf-post-time">${post.time || '刚刚'}</span>`;
+  html += `</div>`;
   
+  if (post.hasImage) {
+    html += `<div class="sf-post-image" style="background: ${imageGrad}"></div>`;
+  }
+  
+  html += `<div class="sf-post-content">${post.content || ''}</div>`;
+  html += `<div class="sf-post-actions">`;
+  html += `<span class="sf-post-action" data-action="comment">💬 ${post.comments || 0}</span>`;
+  html += `<span class="sf-post-action" data-action="repost">🔄 ${post.reposts || 0}</span>`;
+  html += `<span class="sf-post-action${likedClass}" data-action="like">❤️ ${post.likes || 0}</span>`;
+  html += `<span class="sf-post-action${savedClass}" data-action="save">⭐ ${post.saves || 0}</span>`;
+  html += `</div>`;
+  html += `</div>`;
+  
+  return html;
+}
+
+// 处理帖子操作
+function handlePostAction(postId, action) {
   try {
-    await API.post(`/api/forum/posts/${postId}/save`);
+    const tab = ForumState.currentTab;
+    const post = ForumState.posts[tab].find(p => p.id === postId);
+    if (!post) return;
+    
+    switch (action) {
+      case 'like':
+        post.liked = !post.liked;
+        post.likes += post.liked ? 1 : -1;
+        break;
+      case 'save':
+        post.saved = !post.saved;
+        post.saves = (post.saves || 0) + (post.saved ? 1 : -1);
+        break;
+      case 'comment':
+        openPostDetail(postId);
+        return;
+    }
+    
+    renderForumFeed();
   } catch (err) {
-    // 失败回滚
-    post.is_saved = !post.is_saved;
-    post.saves = Math.max(0, post.saves + (post.is_saved ? 1 : -1));
-    renderForumPosts();
-    showToast('操作失败');
+    console.error('handlePostAction error:', err);
+  }
+}
+
+// 生成更多帖子
+function generateMorePosts(tab) {
+  try {
+    showToast('生成中...');
+    setTimeout(() => {
+      generateSamplePosts(tab);
+      renderForumFeed();
+      showToast('生成成功');
+    }, 500);
+  } catch (err) {
+    console.error('generateMorePosts error:', err);
+    showToast('生成失败');
   }
 }
 
 // 打开帖子详情
-async function openPostDetail(postId) {
-  ForumState.currentPostId = postId;
-  showPage('forum-detail');
-  
-  // 加载帖子详情
+function openPostDetail(postId) {
   try {
-    const res = await API.get(`/api/forum/posts/${postId}`);
-    if (res.success && res.data) {
-      renderPostDetail(res.data);
+    const tab = ForumState.currentTab;
+    const post = ForumState.posts[tab].find(p => p.id === postId);
+    if (!post) return;
+    
+    ForumState.currentPostId = postId;
+    
+    const overlay = document.getElementById('forumDetailOverlay');
+    const body = document.getElementById('forumDetailBody');
+    
+    const imageGrad = post.hasImage ? FORUM_GRADIENTS[post.imageIndex % 8] : '';
+    const verifiedHtml = post.verified ? '<span class="sf-post-verified">✓</span>' : '';
+    const commentCount = (ForumState.commentsCache[postId] || []).length;
+    
+    let html = `<div class="sf-post" style="border:0;cursor:default">`;
+    html += `<div class="sf-post-header">`;
+    html += `<div class="sf-post-avatar" style="background: ${FORUM_GRADIENTS[(post.id % 8)]}">${post.authorName?.[0] || '?'}</div>`;
+    html += `<div class="sf-post-meta">`;
+    html += `<span class="sf-post-name">${post.authorName || '匿名'}${verifiedHtml}</span>`;
+    html += `<span class="sf-post-handle">${post.authorTag || '普通用户'}</span>`;
+    html += `</div>`;
+    html += `<span class="sf-post-time">${post.time || '刚刚'}</span>`;
+    html += `</div>`;
+    
+    if (post.hasImage) {
+      html += `<div class="sf-post-image" style="background: ${imageGrad}"></div>`;
     }
-  } catch (err) {
-    // 使用本地数据
-    const post = ForumState.posts.find(p => p.id === postId);
-    if (post) {
-      renderPostDetail(post);
-    }
-  }
-  
-  // 加载评论
-  loadPostComments(postId);
-}
-
-// 返回帖子列表
-function goBackFromForumDetail() {
-  showPage('forum');
-}
-
-// 渲染帖子详情
-function renderPostDetail(post) {
-  const container = document.getElementById('forumDetailContent');
-  
-  container.innerHTML = `
-    <div class="forum-detail-post">
-      <div class="post-header">
-        <div class="post-author">
-          <div class="post-avatar">${post.author_name?.[0] || '?'}</div>
-          <div class="post-author-info">
-            <div class="post-author-name">
-              ${post.author_name || '匿名用户'}
-              ${post.author_tag ? `<span class="post-author-tag">${post.author_tag}</span>` : ''}
-            </div>
-            <div class="post-time">${formatTime(post.created_at)}</div>
+    
+    html += `<div class="sf-post-content">${post.content || ''}</div>`;
+    html += `<div class="sf-post-actions">`;
+    html += `<span class="sf-post-action" onclick="handlePostAction(${post.id}, 'comment')">💬 ${commentCount}</span>`;
+    html += `<span class="sf-post-action" onclick="handlePostAction(${post.id}, 'repost')">🔄 ${post.reposts || 0}</span>`;
+    html += `<span class="sf-post-action ${post.liked ? 'liked' : ''}" onclick="handlePostAction(${post.id}, 'like')">❤️ ${post.likes || 0}</span>`;
+    html += `<span class="sf-post-action ${post.saved ? 'saved' : ''}" onclick="handlePostAction(${post.id}, 'save')">⭐ ${post.saves || 0}</span>`;
+    html += `</div>`;
+    html += `</div>`;
+    
+    // 评论区
+    html += `<div style="padding:14px 0 4px;color:#999;font-size:13px;font-weight:700">评论</div>`;
+    html += `<div id="sfDetailComments">`;
+    
+    const comments = ForumState.commentsCache[postId] || [];
+    if (comments.length === 0) {
+      html += `<div style="text-align:center;padding:20px">
+        <div style="color:#999;font-size:13px;margin-bottom:12px">还没有评论</div>
+        <button class="sf-generate-btn" onclick="generateComments(${post.id})">✨ 生成评论</button>
+      </div>`;
+    } else {
+      html += comments.map(c => `
+        <div class="sf-comment">
+          <div class="sf-comment-avatar" style="background: ${FORUM_GRADIENTS[(c.id % 8)]}">${c.name?.[0] || '?'}</div>
+          <div class="sf-comment-content">
+            <div class="sf-comment-name">${c.name}</div>
+            <div class="sf-comment-text">${c.content}</div>
+            <div class="sf-comment-time">${c.time}</div>
           </div>
         </div>
-      </div>
-      <div class="post-content">${post.content || ''}</div>
-      ${post.images && post.images.length > 0 ? `
-        <div class="post-images">
-          ${post.images.map(img => `<div class="post-image" style="background: linear-gradient(135deg, #FFB6C1, #FFC0CB);"></div>`).join('')}
-        </div>
-      ` : ''}
-      <div class="post-actions">
-        <div class="post-action ${post.is_liked ? 'active' : ''}" onclick="togglePostLike(${post.id})">
-          <span class="action-icon">${post.is_liked ? '❤️' : '🤍'}</span>
-          <span class="action-count">${post.likes || 0}</span>
-        </div>
-        <div class="post-action">
-          <span class="action-icon">💬</span>
-          <span class="action-count">${post.comments || 0}</span>
-        </div>
-        <div class="post-action ${post.is_saved ? 'active' : ''}" onclick="togglePostSave(${post.id})">
-          <span class="action-icon">${post.is_saved ? '⭐' : '☆'}</span>
-          <span class="action-count">${post.saves || 0}</span>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// 加载评论
-async function loadPostComments(postId) {
-  try {
-    const res = await API.get(`/api/forum/posts/${postId}/comments`);
-    if (res.success && res.data) {
-      renderPostComments(res.data.list || []);
+      `).join('');
     }
+    
+    html += `</div>`;
+    
+    // 评论输入框
+    html += `<div class="forum-detail-input">
+      <input type="text" id="forumCommentInput" placeholder="说点什么..." class="forum-comment-input">
+      <button class="forum-comment-send" onclick="submitForumComment()">发送</button>
+    </div>`;
+    
+    body.innerHTML = html;
+    overlay.classList.add('active');
   } catch (err) {
-    // 生成示例评论
-    const sampleComments = [
-      { id: 1, author_name: '云朵邮局', content: '说得太对了！', created_at: Date.now() - 1800000 },
-      { id: 2, author_name: '人间清醒', content: '哇这个好有意思', created_at: Date.now() - 3600000 },
-      { id: 3, author_name: '气泡水加冰', content: '同感同感！', created_at: Date.now() - 5400000 }
-    ];
-    renderPostComments(sampleComments);
+    console.error('openPostDetail error:', err);
+    showToast('打开详情失败');
   }
 }
 
-// 渲染评论
-function renderPostComments(comments) {
-  const container = document.getElementById('forumDetailComments');
-  
-  if (comments.length === 0) {
-    container.innerHTML = `<div class="comments-empty">暂无评论，快来抢沙发～</div>`;
-    return;
+// 关闭帖子详情
+function closePostDetail(event) {
+  try {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('forumDetailOverlay').classList.remove('active');
+    ForumState.currentPostId = null;
+    renderForumFeed(); // 刷新列表
+  } catch (err) {
+    console.error('closePostDetail error:', err);
   }
-  
-  container.innerHTML = `
-    <div class="comments-title">全部评论 (${comments.length})</div>
-    ${comments.map(comment => `
-      <div class="comment-item">
-        <div class="comment-avatar">${comment.author_name?.[0] || '?'}</div>
-        <div class="comment-content">
-          <div class="comment-author">${comment.author_name || '匿名用户'}</div>
-          <div class="comment-text">${comment.content || ''}</div>
-          <div class="comment-time">${formatTime(comment.created_at)}</div>
-        </div>
-      </div>
-    `).join('')}
-  `;
+}
+
+// 生成评论
+function generateComments(postId) {
+  try {
+    const commentTemplates = [
+      { name: '小红', content: '说得太好了！' },
+      { name: '小明', content: '深有同感' },
+      { name: '阿花', content: '太治愈了🥹' },
+      { name: '路人甲', content: '关注了关注了' },
+      { name: '小透明', content: '第一！' }
+    ];
+    
+    ForumState.commentsCache[postId] = commentTemplates.map((c, i) => ({
+      id: Date.now() + i,
+      name: c.name,
+      content: c.content,
+      time: formatTime(Date.now() - Math.random() * 3600000)
+    }));
+    
+    openPostDetail(postId); // 刷新详情
+    showToast('评论生成成功');
+  } catch (err) {
+    console.error('generateComments error:', err);
+    showToast('生成失败');
+  }
 }
 
 // 提交评论
-async function submitForumComment() {
-  const input = document.getElementById('forumCommentInput');
-  const content = input.value.trim();
-  
-  if (!content) {
-    showToast('请输入评论内容');
-    return;
-  }
-  
-  if (!ForumState.currentPostId) return;
-  
+function submitForumComment() {
   try {
-    await API.post(`/api/forum/posts/${ForumState.currentPostId}/comments`, { content });
+    const input = document.getElementById('forumCommentInput');
+    const content = input.value.trim();
+    if (!content) {
+      showToast('请输入评论内容');
+      return;
+    }
+    
+    const postId = ForumState.currentPostId;
+    if (!postId) return;
+    
+    if (!ForumState.commentsCache[postId]) {
+      ForumState.commentsCache[postId] = [];
+    }
+    
+    ForumState.commentsCache[postId].unshift({
+      id: Date.now(),
+      name: AppState.user?.nickname || '我',
+      content: content,
+      time: '刚刚'
+    });
+    
     input.value = '';
+    openPostDetail(postId); // 刷新详情
     showToast('评论成功');
-    loadPostComments(ForumState.currentPostId);
   } catch (err) {
+    console.error('submitForumComment error:', err);
     showToast('评论失败');
   }
 }
 
-// 打开论坛搜索
-function openForumSearch() {
-  showToast('搜索功能开发中');
-}
-
-// 格式化时间
-function formatTime(timestamp) {
-  if (!timestamp) return '';
-  
-  const now = Date.now();
-  const diff = now - timestamp;
-  
-  if (diff < 60000) {
-    return '刚刚';
-  } else if (diff < 3600000) {
-    return Math.floor(diff / 60000) + '分钟前';
-  } else if (diff < 86400000) {
-    return Math.floor(diff / 3600000) + '小时前';
-  } else {
-    return Math.floor(diff / 86400000) + '天前';
+// 打开侧边栏
+function openForumSidebar() {
+  try {
+    ForumState.sideMenuOpen = true;
+    document.getElementById('forumSidebarOverlay').classList.add('active');
+    document.getElementById('forumSidebar').classList.add('active');
+    
+    // 更新用户信息
+    if (AppState.user) {
+      document.getElementById('sidebarAvatar').textContent = (AppState.user.nickname || AppState.user.username || '?')[0];
+      document.getElementById('sidebarName').textContent = AppState.user.nickname || AppState.user.username || '用户';
+      document.getElementById('sidebarTag').textContent = AppState.user.forum_tag || '萌新';
+    }
+  } catch (err) {
+    console.error('openForumSidebar error:', err);
   }
 }
 
+// 关闭侧边栏
+function closeForumSidebar() {
+  try {
+    ForumState.sideMenuOpen = false;
+    document.getElementById('forumSidebarOverlay').classList.remove('active');
+    document.getElementById('forumSidebar').classList.remove('active');
+  } catch (err) {
+    console.error('closeForumSidebar error:', err);
+  }
+}
+
+// 侧边栏菜单功能
+function goToForumProfile() {
+  closeForumSidebar();
+  showToast('我的主页功能开发中');
+}
+
+function goToForumFavorites() {
+  closeForumSidebar();
+  showToast('我的收藏功能开发中');
+}
+
+function goToForumFollows() {
+  closeForumSidebar();
+  showToast('我的关注功能开发中');
+}
+
+function goToHotSearch() {
+  closeForumSidebar();
+  showToast('热搜榜功能开发中');
+}
+
+function editProfileTag() {
+  closeForumSidebar();
+  showToast('修改身份标签功能开发中');
+}
+
+function openForumSearch() {
+  showToast('搜索功能开发中');
+}
 // ==================== 同人文系统 ====================
 const FanficState = {
   currentCategory: 'all',

@@ -1250,28 +1250,31 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
     });
     
     // 处理API错误
+    // 处理API错误
     if (!response.ok) {
-      let errorMsg = 'API请求失败';
-      let errorCode = 'API_ERROR';
+      let errorMsg = "API请求失败";
+      let errorCode = "API_ERROR";
+      let rawError = "";
       
       try {
         const errData = await response.json();
-        errorMsg = errData.error?.message || errData.message || JSON.stringify(errData);
+        rawError = errData.error?.message || errData.message || JSON.stringify(errData);
+        errorMsg = rawError;
       } catch (e) {}
       
-      // 根据状态码判断错误类型
+      // 根据状态码补充错误说明（保留原始错误信息）
       if (response.status === 401 || response.status === 403) {
-        errorMsg = 'API密钥错误，请检查配置';
-        errorCode = 'API_KEY_ERROR';
+        errorCode = "API_KEY_ERROR";
+        if (!rawError) errorMsg = "API密钥错误，请检查配置";
       } else if (response.status === 404) {
-        errorMsg = 'API地址无法连接，请检查配置';
-        errorCode = 'API_URL_ERROR';
+        errorCode = "API_URL_ERROR";
+        if (!rawError) errorMsg = "API地址无法连接，请检查配置";
       } else if (response.status === 429) {
-        errorMsg = '请求过于频繁，请稍后重试';
-        errorCode = 'RATE_LIMITED';
+        errorCode = "RATE_LIMITED";
+        if (!rawError) errorMsg = "请求过于频繁，请稍后重试";
       } else if (response.status >= 500) {
-        errorMsg = 'API服务异常，请稍后重试';
-        errorCode = 'API_SERVER_ERROR';
+        errorCode = "API_SERVER_ERROR";
+        if (!rawError) errorMsg = "API服务异常，请稍后重试";
       }
       
       if (stream) {

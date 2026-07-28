@@ -2765,9 +2765,12 @@ ul, ol {
 .page-forum-detail {
   padding-top: 0;
   background: #fafafa;
+  height: 100vh;
+}
+
+.page-forum-detail.active {
   display: flex;
   flex-direction: column;
-  height: 100vh;
 }
 
 .forum-detail-header {
@@ -3884,4 +3887,240 @@ ul, ol {
   color: var(--text-tertiary);
   font-weight: 300;
   align-self: center;
+}
+
+/* ==================== 论坛详情 overlay ==================== */
+.forum-detail-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.forum-detail-overlay.active {
+  display: flex;
+}
+
+.forum-detail-panel {
+  width: 90%;
+  max-width: 400px;
+  max-height: 80vh;
+  background: white;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.forum-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  height: 50px;
+  background: white;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0;
+}
+
+.forum-detail-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #f5f5f5;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.forum-detail-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.forum-detail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+/* 帖子样式 */
+.sf-post {
+  background: white;
+  padding: 16px;
+  border-bottom: 8px solid #f5f5f5;
+}
+
+.sf-post-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.sf-post-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.sf-post-meta {
+  flex: 1;
+}
+
+.sf-post-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sf-post-verified {
+  color: #FF6B9D;
+  font-size: 12px;
+}
+
+.sf-post-handle {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.sf-post-time {
+  font-size: 12px;
+  color: #999;
+  flex-shrink: 0;
+}
+
+.sf-post-image {
+  width: 100%;
+  height: 200px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.sf-post-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+}
+
+.sf-post-actions {
+  display: flex;
+  justify-content: space-around;
+  padding-top: 8px;
+  border-top: 1px solid #f5f5f5;
+}
+
+.sf-post-action {
+  font-size: 13px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.sf-post-action:hover {
+  background: #f5f5f5;
+}
+
+.sf-post-action.liked {
+  color: #FF6B9D;
+}
+
+.sf-post-action.saved {
+  color: #FFD700;
+}
+
+/* 评论样式 */
+.sf-comment {
+  display: flex;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.sf-comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.sf-comment-content {
+  flex: 1;
+}
+
+.sf-comment-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.sf-comment-text {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.sf-comment-time {
+  font-size: 11px;
+  color: #999;
+}
+
+/* 生成按钮 */
+.sf-generate-btn {
+  padding: 8px 20px;
+  border: 1px solid #FF6B9D;
+  border-radius: 20px;
+  background: #FF6B9D;
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 空状态 */
+.forum-empty {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: #999;
+  margin-bottom: 16px;
 }
