@@ -1,21 +1,26 @@
 /**
- * Mochi AI Chat - 前端核心逻辑
- * 功能：聊天、角色管理、社区、个人中心、自定义装扮
+ * Mochi AI Chat - 前端核心逻辑 v2.0
+ * 功能：登录注册、聊天、角色管理、社区、个人中心、自定义装扮、云端同步
  */
 
 // ==================== 全局状态 ====================
 const AppState = {
+  isLoggedIn: false,
+  token: '',
+  user: {
+    id: null,
+    username: '',
+    nickname: '',
+    avatar: '',
+    description: '',
+    rice_balance: 0
+  },
   currentPage: 'chat',
   currentCharacterId: null,
+  currentConversationId: null,
   characters: [],
-  chatHistory: {}, // characterId -> messages[]
-  userProfile: {
-    nickname: '新用户',
-    avatar: '',
-    description: ''
-  },
-  deviceId: '',
-  beans: 0,
+  conversations: {}, // characterId -> conversationId
+  chatHistory: {}, // conversationId -> messages[]
   isSending: false,
   abortController: null,
   communitySort: 'hot',
@@ -26,16 +31,70 @@ const AppState = {
     wallpaper: '',
     wallpaperOpacity: 30,
     wallpaperBlur: 0
-  }
+  },
+  txFilterType: 'all'
 };
 
 // ==================== 本地存储键 ====================
 const STORAGE_KEYS = {
-  CHARACTERS: 'mochi_characters',
-  CHAT_HISTORY: 'mochi_chat_history',
-  USER_PROFILE: 'mochi_user_profile',
-  DEVICE_ID: 'mochi_device_id',
+  TOKEN: 'mochi_token',
   THEME_CONFIG: 'mochi_theme_config'
+};
+
+// ==================== API 请求封装 ====================
+const API = {
+  async request(path, options = {}) {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers
+    };
+    
+    if (AppState.token) {
+      headers['Authorization'] = `Bearer ${AppState.token}`;
+    }
+
+    const response = await fetch(path, {
+      ...options,
+      headers
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        AppState.isLoggedIn = false;
+        AppState.token = '';
+        localStorage.removeItem(STORAGE_KEYS.TOKEN);
+        showLoginPage();
+        throw new Error(data.error || '登录已过期');
+      }
+      throw new Error(data.error || '请求失败');
+    }
+    
+    return data;
+  },
+
+  get(path) {
+    return this.request(path, { method: 'GET' });
+  },
+
+  post(path, data) {
+    return this.request(path, {
+      method: 'POST',
+      body: JSON.stringify(data || {})
+    });
+  },
+
+  put(path, data) {
+    return this.request(path, {
+      method: 'PUT',
+      body: JSON.stringify(data || {})
+    });
+  },
+
+  delete(path) {
+    return this.request(path, { method: 'DELETE' });
+  }
 };
 
 // ==================== 初始化 ====================
@@ -44,58 +103,190 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
-  loadFromStorage();
-  generateDeviceId();
-  setupEventListeners();
-  renderCharacters();
-  renderCharacterSwitcher();
-  loadUserInfo();
-  loadCommunityCharacters();
+  loadThemeFromStorage();
   applyThemeConfig();
-  
-  // 默认选中第一个角色
-  if (AppState.characters.length > 0) {
-    switchCharacter(AppState.characters[0].id);
+  setupEventListeners();
+
+  // 检查是否已登录
+  const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+  if (token) {
+    AppState.token = token;
+    checkAuth();
+  } else {
+    showLoginPage();
   }
 }
 
-// ==================== 本地存储 ====================
-function saveToStorage() {
-  localStorage.setItem(STORAGE_KEYS.CHARACTERS, JSON.stringify(AppState.characters));
-  localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(AppState.chatHistory));
-  localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(AppState.userProfile));
+// ==================== 登录相关 ====================
+function showLoginPage() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-login').classList.add('active');
+  document.getElementById('bottomNav').style.display = 'none';
+}
+
+function showMainApp() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-chat').classList.add('active');
+  document.getElementById('bottomNav').style.display = 'flex';
+  AppState.currentPage = 'chat';
+}
+
+async function checkAuth() {
+  try {
+    const res = await API.get('/api/auth/me');
+    if (res.success) {
+      AppState.isLoggedIn = true;
+      AppState.user = res.data;
+      await loadUserData();
+      showMainApp();
+    }
+  } catch (err) {
+    AppState.token = '';
+    localStorage.removeItem(STORAGE_KEYS.TOKEN);
+    showLoginPage();
+  }
+}
+
+async function handleLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  if (!username || !password) {
+    showToast('请输入用户名和密码');
+    return;
+  }
+
+  try {
+    const res = await API.post('/api/auth/login', { username, password });
+    if (res.success) {
+      AppState.token = res.data.token;
+      AppState.user = res.data.user;
+      AppState.isLoggedIn = true;
+      localStorage.setItem(STORAGE_KEYS.TOKEN, res.data.token);
+      
+      await loadUserData();
+      showMainApp();
+      showToast('登录成功');
+    }
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+async function handleRegister() {
+  const username = document.getElementById('registerUsername').value.trim();
+  const password = document.getElementById('registerPassword').value;
+  const confirmPassword = document.getElementById('registerConfirmPassword').value;
+
+  if (!username || !password) {
+    showToast('请输入用户名和密码');
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    showToast('两次密码输入不一致');
+    return;
+  }
+
+  if (password.length < 6) {
+    showToast('密码长度不能少于6位');
+    return;
+  }
+
+  try {
+    const res = await API.post('/api/auth/register', { username, password });
+    if (res.success) {
+      AppState.token = res.data.token;
+      AppState.user = res.data.user;
+      AppState.isLoggedIn = true;
+      localStorage.setItem(STORAGE_KEYS.TOKEN, res.data.token);
+      
+      await loadUserData();
+      showMainApp();
+      showToast('注册成功，欢迎加入！');
+    }
+  } catch (err) {
+    showToast(err.message);
+  }
+}
+
+function handleLogout() {
+  showConfirm('确定要退出登录吗？', () => {
+    AppState.isLoggedIn = false;
+    AppState.token = '';
+    AppState.user = { id: null, username: '', nickname: '', avatar: '', rice_balance: 0 };
+    AppState.characters = [];
+    AppState.chatHistory = {};
+    AppState.conversations = {};
+    localStorage.removeItem(STORAGE_KEYS.TOKEN);
+    showLoginPage();
+    showToast('已退出登录');
+  });
+}
+
+// ==================== 加载用户数据 ====================
+async function loadUserData() {
+  try {
+    // 加载角色列表
+    const charsRes = await API.get('/api/characters');
+    if (charsRes.success) {
+      AppState.characters = charsRes.data;
+    }
+
+    // 加载对话列表
+    const convRes = await API.get('/api/conversations');
+    if (convRes.success) {
+      AppState.conversations = {};
+      convRes.data.forEach(conv => {
+        AppState.conversations[conv.character_id] = conv.id;
+      });
+    }
+
+    // 渲染UI
+    renderCharacters();
+    renderCharacterSwitcher();
+    renderProfile();
+
+    // 默认选中第一个角色
+    if (AppState.characters.length > 0) {
+      await switchCharacter(AppState.characters[0].id);
+    }
+  } catch (err) {
+    console.error('加载用户数据失败:', err);
+  }
+}
+
+// ==================== 本地存储（主题） ====================
+function saveThemeToStorage() {
   localStorage.setItem(STORAGE_KEYS.THEME_CONFIG, JSON.stringify(AppState.themeConfig));
 }
 
-function loadFromStorage() {
+function loadThemeFromStorage() {
   try {
-    const chars = localStorage.getItem(STORAGE_KEYS.CHARACTERS);
-    if (chars) AppState.characters = JSON.parse(chars);
-    
-    const history = localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY);
-    if (history) AppState.chatHistory = JSON.parse(history);
-    
-    const profile = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
-    if (profile) AppState.userProfile = JSON.parse(profile);
-    
     const theme = localStorage.getItem(STORAGE_KEYS.THEME_CONFIG);
     if (theme) AppState.themeConfig = JSON.parse(theme);
   } catch (e) {
-    console.error('加载本地存储失败:', e);
+    console.error('加载主题配置失败:', e);
   }
-}
-
-function generateDeviceId() {
-  let deviceId = localStorage.getItem(STORAGE_KEYS.DEVICE_ID);
-  if (!deviceId) {
-    deviceId = 'device_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId);
-  }
-  AppState.deviceId = deviceId;
 }
 
 // ==================== 事件监听 ====================
 function setupEventListeners() {
+  // 登录注册
+  document.getElementById('btnLogin').addEventListener('click', handleLogin);
+  document.getElementById('btnRegister').addEventListener('click', handleRegister);
+
+  document.querySelectorAll('.login-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      
+      const tabName = tab.dataset.tab;
+      document.getElementById('loginForm').classList.toggle('active', tabName === 'login');
+      document.getElementById('registerForm').classList.toggle('active', tabName === 'register');
+    });
+  });
+
   // 底部导航
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
@@ -137,7 +328,19 @@ function setupEventListeners() {
 
   // 充值
   document.getElementById('btnRecharge').addEventListener('click', openRecharge);
-  document.getElementById('menuBeans').addEventListener('click', openBeansDetail);
+  document.getElementById('menuRice').addEventListener('click', openRiceDetail);
+  document.getElementById('menuOrders').addEventListener('click', openOrders);
+  document.getElementById('menuLogout').addEventListener('click', handleLogout);
+
+  // 交易记录筛选
+  document.querySelectorAll('[data-tx-type]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('[data-tx-type]').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      AppState.txFilterType = tab.dataset.txType;
+      loadTransactions();
+    });
+  });
 
   // 装扮
   document.getElementById('menuTheme').addEventListener('click', openTheme);
@@ -164,9 +367,6 @@ function setupEventListeners() {
   // 关于
   document.getElementById('menuAbout').addEventListener('click', () => openModal('modalAbout'));
 
-  // 清空缓存
-  document.getElementById('menuClear').addEventListener('click', clearCache);
-
   // 社区搜索
   document.getElementById('communitySearch').addEventListener('input', debounce(() => {
     AppState.communitySearch = document.getElementById('communitySearch').value;
@@ -185,9 +385,6 @@ function setupEventListeners() {
 
   // 导入角色
   document.getElementById('btnImportCharacter').addEventListener('click', importCharacter);
-
-  // 聊天菜单
-  document.getElementById('btnChatMenu').addEventListener('click', showChatMenu);
 
   // 弹窗关闭
   document.querySelectorAll('.modal-close, [data-modal]').forEach(btn => {
@@ -237,19 +434,40 @@ function switchPage(page) {
 }
 
 // ==================== 角色切换 ====================
-function switchCharacter(characterId) {
+async function switchCharacter(characterId) {
   AppState.currentCharacterId = characterId;
   
   // 更新切换栏
   document.querySelectorAll('.switcher-item').forEach(item => {
-    item.classList.toggle('active', item.dataset.id === characterId);
+    item.classList.toggle('active', item.dataset.id == characterId);
   });
 
+  // 加载对话历史
+  await loadConversation(characterId);
+  
   // 渲染消息
   renderMessages();
   
   // 滚动到底部
   scrollToBottom();
+}
+
+async function loadConversation(characterId) {
+  const convId = AppState.conversations[characterId];
+  if (!convId) {
+    AppState.currentConversationId = null;
+    return;
+  }
+
+  try {
+    const res = await API.get(`/api/conversations/${convId}/messages`);
+    if (res.success) {
+      AppState.chatHistory[convId] = res.data;
+      AppState.currentConversationId = convId;
+    }
+  } catch (err) {
+    console.error('加载对话失败:', err);
+  }
 }
 
 function renderCharacterSwitcher() {
@@ -261,7 +479,7 @@ function renderCharacterSwitcher() {
   }
 
   switcher.innerHTML = AppState.characters.map(char => `
-    <div class="switcher-item ${char.id === AppState.currentCharacterId ? 'active' : ''}" data-id="${char.id}">
+    <div class="switcher-item ${char.id == AppState.currentCharacterId ? 'active' : ''}" data-id="${char.id}">
       <div class="switcher-avatar">
         ${char.avatar ? `<img src="${char.avatar}" alt="${char.name}">` : '<span class="avatar-placeholder">👤</span>'}
       </div>
@@ -280,17 +498,17 @@ function renderCharacterSwitcher() {
 // ==================== 聊天功能 ====================
 function renderMessages() {
   const container = document.getElementById('chatMessages');
-  const characterId = AppState.currentCharacterId;
+  const convId = AppState.currentConversationId;
   
-  if (!characterId) {
+  if (!convId || !AppState.currentCharacterId) {
     container.innerHTML = '<div style="text-align: center; color: var(--text-tertiary); padding: 40px 0;">请先选择或创建一个角色</div>';
     return;
   }
 
-  const messages = AppState.chatHistory[characterId] || [];
+  const messages = AppState.chatHistory[convId] || [];
   
   if (messages.length === 0) {
-    const char = AppState.characters.find(c => c.id === characterId);
+    const char = AppState.characters.find(c => c.id == AppState.currentCharacterId);
     container.innerHTML = `
       <div style="text-align: center; padding: 40px 20px;">
         <div style="font-size: 48px; margin-bottom: 16px; opacity: 0.6;">${char?.avatar ? '' : '👋'}</div>
@@ -305,12 +523,12 @@ function renderMessages() {
 
 function renderMessage(msg) {
   const isUser = msg.role === 'user';
-  const character = AppState.characters.find(c => c.id === AppState.currentCharacterId);
+  const character = AppState.characters.find(c => c.id == AppState.currentCharacterId);
   
   let avatarHtml = '';
   if (isUser) {
-    avatarHtml = AppState.userProfile.avatar 
-      ? `<img src="${AppState.userProfile.avatar}" alt="我">`
+    avatarHtml = AppState.user.avatar 
+      ? `<img src="${AppState.user.avatar}" alt="我">`
       : '<span class="avatar-placeholder">👤</span>';
   } else {
     avatarHtml = character?.avatar 
@@ -323,13 +541,13 @@ function renderMessage(msg) {
       <div class="message-avatar">${avatarHtml}</div>
       <div class="message-content">
         <div class="chat-bubble">${msg.content ? escapeHtml(msg.content) : ''}</div>
-        ${msg.time ? `<div class="message-time">${formatTime(msg.time)}</div>` : ''}
+        ${msg.created_at ? `<div class="message-time">${formatTime(msg.created_at)}</div>` : ''}
       </div>
     </div>
   `;
 }
 
-function sendMessage() {
+async function sendMessage() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   
@@ -340,77 +558,82 @@ function sendMessage() {
   }
 
   const characterId = AppState.currentCharacterId;
-  const character = AppState.characters.find(c => c.id === characterId);
+  const character = AppState.characters.find(c => c.id == characterId);
   
   if (!character) {
     showToast('角色不存在');
     return;
   }
 
+  input.value = '';
+  input.style.height = 'auto';
+
+  // 获取或创建对话
+  let convId = AppState.conversations[characterId];
+  if (!convId) {
+    try {
+      const res = await API.post('/api/conversations', { characterId });
+      if (res.success) {
+        convId = res.data.id;
+        AppState.conversations[characterId] = convId;
+        AppState.chatHistory[convId] = [];
+        AppState.currentConversationId = convId;
+      }
+    } catch (err) {
+      showToast('创建对话失败');
+      return;
+    }
+  }
+
   // 添加用户消息
   const userMsg = {
     role: 'user',
     content: text,
-    time: Date.now()
+    created_at: Date.now()
   };
   
-  if (!AppState.chatHistory[characterId]) {
-    AppState.chatHistory[characterId] = [];
+  if (!AppState.chatHistory[convId]) {
+    AppState.chatHistory[convId] = [];
   }
-  AppState.chatHistory[characterId].push(userMsg);
-  
-  input.value = '';
-  input.style.height = 'auto';
-  
+  AppState.chatHistory[convId].push(userMsg);
   renderMessages();
   scrollToBottom();
-  saveToStorage();
 
   // 发送AI请求
-  sendAiRequest(characterId, character);
+  AppState.isSending = true;
+  await sendAiRequest(character, convId, AppState.chatHistory[convId]);
+  AppState.isSending = false;
 }
 
-async function sendAiRequest(characterId, character) {
-  AppState.isSending = true;
-  document.getElementById('btnSend').disabled = true;
-
-  // 添加AI消息占位（打字动画）
-  const aiMsg = {
-    role: 'assistant',
-    content: '',
-    time: Date.now(),
-    isTyping: true
-  };
-  AppState.chatHistory[characterId].push(aiMsg);
-  
-  renderMessages();
-  scrollToBottom();
-
+async function sendAiRequest(character, convId, messages) {
   try {
-    const messages = AppState.chatHistory[characterId]
-      .filter(m => !m.isTyping)
-      .map(m => ({ role: m.role, content: m.content }));
+    // 添加AI消息占位
+    const aiMsg = {
+      role: 'assistant',
+      content: '',
+      created_at: Date.now()
+    };
+    AppState.chatHistory[convId].push(aiMsg);
+    renderMessages();
+    scrollToBottom();
 
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-device-id': AppState.deviceId
+        'Authorization': `Bearer ${AppState.token}`
       },
       body: JSON.stringify({
-        messages,
-        characterPrompt: character.prompt,
-        characterName: character.name,
+        messages: messages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content })),
+        characterId: character.id,
+        conversationId: convId,
         stream: true
       })
     });
 
-    if (response.status === 402) {
-      throw new Error('豆子不足，请先充值');
-    }
-
     if (!response.ok) {
-      throw new Error('请求失败');
+      const errData = await response.json();
+      throw new Error(errData.error || '请求失败');
     }
 
     const reader = response.body.getReader();
@@ -435,17 +658,28 @@ async function sendAiRequest(characterId, character) {
 
         try {
           const parsed = JSON.parse(data);
+          
           if (parsed.error) {
             throw new Error(parsed.error);
           }
+
+          if (parsed.done) {
+            // 更新余额
+            if (parsed.rice_balance !== undefined) {
+              AppState.user.rice_balance = parsed.rice_balance;
+              updateRiceDisplay();
+            }
+            continue;
+          }
+
           if (parsed.content) {
             fullContent += parsed.content;
-            // 更新消息
-            const msgs = AppState.chatHistory[characterId];
-            const lastMsg = msgs[msgs.length - 1];
-            if (lastMsg && lastMsg.isTyping) {
+            // 更新最后一条消息
+            const lastMsg = AppState.chatHistory[convId][AppState.chatHistory[convId].length - 1];
+            if (lastMsg && lastMsg.role === 'assistant') {
               lastMsg.content = fullContent;
               updateLastMessage();
+              scrollToBottom();
             }
           }
         } catch (e) {
@@ -453,34 +687,16 @@ async function sendAiRequest(characterId, character) {
         }
       }
     }
-
-    // 完成消息
-    const msgs = AppState.chatHistory[characterId];
-    const lastMsg = msgs[msgs.length - 1];
-    if (lastMsg && lastMsg.isTyping) {
-      lastMsg.isTyping = false;
-      lastMsg.content = fullContent || '（无响应内容）';
-    }
-
-    // 刷新豆子余额
-    loadUserInfo();
-
   } catch (err) {
-    console.error('聊天请求失败:', err);
+    console.error('AI请求失败:', err);
+    showToast(err.message);
     
-    // 移除占位消息
-    const msgs = AppState.chatHistory[characterId];
-    if (msgs.length > 0 && msgs[msgs.length - 1].isTyping) {
+    // 移除失败的AI消息
+    const msgs = AppState.chatHistory[convId];
+    if (msgs && msgs.length > 0 && msgs[msgs.length - 1].role === 'assistant') {
       msgs.pop();
+      renderMessages();
     }
-    
-    showToast(err.message || '发送失败，请重试');
-  } finally {
-    AppState.isSending = false;
-    document.getElementById('btnSend').disabled = false;
-    renderMessages();
-    scrollToBottom();
-    saveToStorage();
   }
 }
 
@@ -489,8 +705,8 @@ function updateLastMessage() {
   const messages = container.querySelectorAll('.message-item');
   const lastMsg = messages[messages.length - 1];
   if (lastMsg) {
-    const characterId = AppState.currentCharacterId;
-    const msgs = AppState.chatHistory[characterId];
+    const convId = AppState.currentConversationId;
+    const msgs = AppState.chatHistory[convId];
     const lastAiMsg = msgs[msgs.length - 1];
     if (lastAiMsg) {
       const bubble = lastMsg.querySelector('.chat-bubble');
@@ -499,7 +715,6 @@ function updateLastMessage() {
       }
     }
   }
-  scrollToBottom();
 }
 
 function scrollToBottom() {
@@ -509,496 +724,485 @@ function scrollToBottom() {
 
 // ==================== 角色管理 ====================
 function renderCharacters() {
-  const list = document.getElementById('characterList');
+  const container = document.getElementById('characterList');
   const empty = document.getElementById('characterEmpty');
   
   if (AppState.characters.length === 0) {
-    list.innerHTML = '';
-    empty.style.display = 'flex';
+    container.innerHTML = '';
+    empty.style.display = 'block';
     return;
   }
 
   empty.style.display = 'none';
-  
-  list.innerHTML = AppState.characters.map(char => `
+  container.innerHTML = AppState.characters.map(char => `
     <div class="character-card" data-id="${char.id}">
-      <div class="character-card-avatar">
+      <div class="character-avatar">
         ${char.avatar ? `<img src="${char.avatar}" alt="${char.name}">` : '<span class="avatar-placeholder">👤</span>'}
       </div>
-      <div class="character-card-info">
-        <div class="character-card-name">${escapeHtml(char.name)}</div>
-        <div class="character-card-desc">${escapeHtml(char.description || '暂无简介')}</div>
+      <div class="character-info">
+        <div class="character-name">${escapeHtml(char.name)}</div>
+        <div class="character-desc">${escapeHtml(char.description || '暂无简介')}</div>
       </div>
-      <div class="character-card-actions">
-        <button class="character-card-btn chat" data-action="chat" data-id="${char.id}">聊天</button>
-        <button class="character-card-btn edit" data-action="edit" data-id="${char.id}">编辑</button>
+      <div class="character-actions">
+        <button class="icon-btn small" onclick="editCharacter(${char.id})" title="编辑">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+        <button class="icon-btn small" onclick="deleteCharacter(${char.id})" title="删除">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
       </div>
     </div>
   `).join('');
-
-  // 绑定事件
-  list.querySelectorAll('.character-card-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const action = btn.dataset.action;
-      const id = btn.dataset.id;
-      
-      if (action === 'chat') {
-        switchCharacter(id);
-        switchPage('chat');
-      } else if (action === 'edit') {
-        openCharacterEdit(id);
-      }
-    });
-  });
-
-  // 卡片点击编辑
-  list.querySelectorAll('.character-card').forEach(card => {
-    card.addEventListener('click', () => {
-      openCharacterEdit(card.dataset.id);
-    });
-  });
 }
 
-let _editingCharacterId = null;
-let _tempAvatar = '';
+let editingCharacterId = null;
 
 function openCharacterEdit(characterId = null) {
-  _editingCharacterId = characterId;
-  _tempAvatar = '';
-  
-  const title = document.getElementById('characterEditTitle');
-  const nameInput = document.getElementById('characterName');
-  const descInput = document.getElementById('characterDesc');
-  const promptInput = document.getElementById('characterPrompt');
-  const tagsInput = document.getElementById('characterTags');
-  const publicCheck = document.getElementById('characterPublic');
-  const avatarPreview = document.getElementById('characterAvatarPreview');
+  editingCharacterId = characterId;
+  const title = characterId ? '编辑角色' : '创建角色';
+  document.getElementById('characterEditTitle').textContent = title;
 
   if (characterId) {
-    const char = AppState.characters.find(c => c.id === characterId);
+    const char = AppState.characters.find(c => c.id == characterId);
     if (char) {
-      title.textContent = '编辑角色';
-      nameInput.value = char.name;
-      descInput.value = char.description || '';
-      promptInput.value = char.prompt || '';
-      tagsInput.value = (char.tags || []).join(',');
-      publicCheck.checked = char.isPublic || false;
+      document.getElementById('characterName').value = char.name;
+      document.getElementById('characterDesc').value = char.description || '';
+      document.getElementById('characterPrompt').value = char.persona || '';
+      document.getElementById('characterTags').value = (char.tags || []).join(', ');
+      document.getElementById('characterPublic').checked = char.isPublic;
       
+      const preview = document.getElementById('characterAvatarPreview');
       if (char.avatar) {
-        avatarPreview.innerHTML = `<img src="${char.avatar}" alt="头像">`;
-        _tempAvatar = char.avatar;
+        preview.innerHTML = `<img src="${char.avatar}" alt="头像">`;
       } else {
-        avatarPreview.innerHTML = '<span class="avatar-placeholder">👤</span>';
+        preview.innerHTML = '<span class="avatar-placeholder">👤</span>';
       }
     }
   } else {
-    title.textContent = '创建角色';
-    nameInput.value = '';
-    descInput.value = '';
-    promptInput.value = '';
-    tagsInput.value = '';
-    publicCheck.checked = false;
-    avatarPreview.innerHTML = '<span class="avatar-placeholder">👤</span>';
+    document.getElementById('characterName').value = '';
+    document.getElementById('characterDesc').value = '';
+    document.getElementById('characterPrompt').value = '';
+    document.getElementById('characterTags').value = '';
+    document.getElementById('characterPublic').checked = false;
+    document.getElementById('characterAvatarPreview').innerHTML = '<span class="avatar-placeholder">👤</span>';
   }
 
   openModal('modalCharacterEdit');
 }
 
-function handleCharacterAvatar(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    _tempAvatar = event.target.result;
-    document.getElementById('characterAvatarPreview').innerHTML = `<img src="${_tempAvatar}" alt="头像">`;
-  };
-  reader.readAsDataURL(file);
+function editCharacter(id) {
+  openCharacterEdit(id);
 }
 
-function saveCharacter() {
+async function saveCharacter() {
   const name = document.getElementById('characterName').value.trim();
   const description = document.getElementById('characterDesc').value.trim();
-  const prompt = document.getElementById('characterPrompt').value.trim();
+  const persona = document.getElementById('characterPrompt').value.trim();
   const tagsStr = document.getElementById('characterTags').value.trim();
   const isPublic = document.getElementById('characterPublic').checked;
+  const avatar = document.getElementById('characterAvatarPreview').querySelector('img')?.src || '';
 
   if (!name) {
     showToast('请输入角色名称');
     return;
   }
-  if (!prompt) {
+
+  if (!persona) {
     showToast('请输入角色人设');
     return;
   }
 
-  const tags = tagsStr ? tagsStr.split(/[,，]/).map(t => t.trim()).filter(Boolean) : [];
-
-  if (_editingCharacterId) {
-    // 编辑
-    const index = AppState.characters.findIndex(c => c.id === _editingCharacterId);
-    if (index > -1) {
-      AppState.characters[index] = {
-        ...AppState.characters[index],
-        name,
-        description,
-        prompt,
-        tags,
-        isPublic,
-        avatar: _tempAvatar || AppState.characters[index].avatar
-      };
-    }
-    showToast('角色已更新');
-  } else {
-    // 新建
-    const newChar = {
-      id: 'char_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-      name,
-      description,
-      prompt,
-      tags,
-      isPublic,
-      avatar: _tempAvatar,
-      createdAt: Date.now()
-    };
-    AppState.characters.unshift(newChar);
-    AppState.chatHistory[newChar.id] = [];
-    
-    // 如果是第一个角色，自动选中
-    if (AppState.characters.length === 1) {
-      AppState.currentCharacterId = newChar.id;
-    }
-    
-    showToast('角色创建成功');
-  }
-
-  saveToStorage();
-  renderCharacters();
-  renderCharacterSwitcher();
-  closeModal('modalCharacterEdit');
-}
-
-// ==================== 社区功能 ====================
-let _communityCharacters = [];
-let _currentDetailChar = null;
-
-async function loadCommunityCharacters() {
-  const list = document.getElementById('communityList');
-  list.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+  const tags = tagsStr ? tagsStr.split(/[,，]/).map(t => t.trim()).filter(t => t) : [];
 
   try {
-    const params = new URLSearchParams({
-      page: 1,
-      pageSize: 20,
-      sort: AppState.communitySort,
-      search: AppState.communitySearch
-    });
-
-    const response = await fetch('/api/community/characters?' + params.toString(), {
-      headers: { 'x-device-id': AppState.deviceId }
-    });
-    const data = await response.json();
-
-    if (data.success) {
-      _communityCharacters = data.data.list;
-      renderCommunityList();
+    if (editingCharacterId) {
+      // 更新
+      await API.put(`/api/characters/${editingCharacterId}`, {
+        name, avatar, persona, description, tags, isPublic
+      });
+      
+      // 更新本地状态
+      const index = AppState.characters.findIndex(c => c.id == editingCharacterId);
+      if (index !== -1) {
+        AppState.characters[index] = { ...AppState.characters[index], name, avatar, persona, description, tags, isPublic };
+      }
+      
+      showToast('角色已更新');
     } else {
-      throw new Error(data.error || '加载失败');
+      // 创建
+      const res = await API.post('/api/characters', {
+        name, avatar, persona, description, tags, isPublic
+      });
+      
+      if (res.success) {
+        const newChar = {
+          id: res.data.id,
+          name, avatar, persona, description, tags, isPublic,
+          created_at: Date.now()
+        };
+        AppState.characters.unshift(newChar);
+        showToast('角色创建成功');
+      }
     }
+
+    closeModal('modalCharacterEdit');
+    renderCharacters();
+    renderCharacterSwitcher();
   } catch (err) {
-    console.error('加载社区角色失败:', err);
-    list.innerHTML = '<div style="text-align: center; color: var(--text-tertiary); padding: 40px 0;">加载失败，请重试</div>';
+    showToast(err.message);
   }
 }
 
-function renderCommunityList() {
-  const list = document.getElementById('communityList');
-  
-  if (_communityCharacters.length === 0) {
-    list.innerHTML = '<div style="text-align: center; color: var(--text-tertiary); padding: 40px 0;">暂无角色</div>';
-    return;
-  }
-
-  list.innerHTML = _communityCharacters.map(char => `
-    <div class="community-card" data-id="${char.id}">
-      <div class="community-card-header">
-        <div class="community-card-avatar">
-          ${char.avatar ? `<img src="${char.avatar}" alt="${char.name}">` : '<span class="avatar-placeholder">👤</span>'}
-        </div>
-        <div class="community-card-info">
-          <div class="community-card-name">${escapeHtml(char.name)}</div>
-          <div class="community-card-author">by ${escapeHtml(char.author || '匿名')}</div>
-        </div>
-      </div>
-      <div class="community-card-desc">${escapeHtml(char.description || '暂无简介')}</div>
-      <div class="community-card-footer">
-        <div class="community-card-tags">
-          ${(char.tags || []).slice(0, 3).map(tag => `<span class="community-tag">${escapeHtml(tag)}</span>`).join('')}
-        </div>
-        <div class="community-card-stats">
-          <span class="community-stat">❤️ ${char.likes || 0}</span>
-        </div>
-      </div>
-    </div>
-  `).join('');
-
-  // 绑定点击事件
-  list.querySelectorAll('.community-card').forEach(card => {
-    card.addEventListener('click', () => {
-      openCharacterDetail(card.dataset.id);
-    });
+function deleteCharacter(id) {
+  const char = AppState.characters.find(c => c.id == id);
+  showConfirm(`确定要删除「${char?.name || '该角色'}」吗？删除后对话记录也会一并删除。`, async () => {
+    try {
+      await API.delete(`/api/characters/${id}`);
+      
+      AppState.characters = AppState.characters.filter(c => c.id != id);
+      delete AppState.conversations[id];
+      
+      if (AppState.currentCharacterId == id) {
+        AppState.currentCharacterId = null;
+        AppState.currentConversationId = null;
+        if (AppState.characters.length > 0) {
+          switchCharacter(AppState.characters[0].id);
+        } else {
+          renderMessages();
+        }
+      }
+      
+      renderCharacters();
+      renderCharacterSwitcher();
+      showToast('角色已删除');
+    } catch (err) {
+      showToast(err.message);
+    }
   });
 }
 
-async function openCharacterDetail(characterId) {
-  const char = _communityCharacters.find(c => c.id === characterId);
-  if (!char) return;
+function handleCharacterAvatar(e) {
+  const file = e.target.files[0];
+  if (!file) return;
 
-  _currentDetailChar = char;
-
-  document.getElementById('detailName').textContent = char.name;
-  document.getElementById('detailDesc').textContent = char.description || '';
-  document.getElementById('detailAuthor').textContent = char.author || '匿名';
-  document.getElementById('detailLikes').textContent = char.likes || 0;
-  document.getElementById('detailPrompt').textContent = char.prompt || '暂无设定';
-
-  const avatarEl = document.getElementById('detailAvatar');
-  if (char.avatar) {
-    avatarEl.innerHTML = `<img src="${char.avatar}" alt="${char.name}">`;
-  } else {
-    avatarEl.innerHTML = '<span class="avatar-placeholder">👤</span>';
-  }
-
-  const tagsEl = document.getElementById('detailTags');
-  tagsEl.innerHTML = (char.tags || []).map(tag => `<span class="detail-tag">${escapeHtml(tag)}</span>`).join('');
-
-  openModal('modalCharacterDetail');
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    document.getElementById('characterAvatarPreview').innerHTML = `<img src="${event.target.result}" alt="头像">`;
+  };
+  reader.readAsDataURL(file);
 }
 
-function importCharacter() {
-  if (!_currentDetailChar) return;
+// ==================== 社区功能 ====================
+let currentDetailCharacter = null;
+
+async function loadCommunityCharacters() {
+  try {
+    const params = new URLSearchParams({
+      page: 1,
+      sort: AppState.communitySort,
+      search: AppState.communitySearch
+    });
+    
+    const res = await API.get(`/api/community/characters?${params}`);
+    if (res.success) {
+      renderCommunityList(res.data.list);
+    }
+  } catch (err) {
+    console.error('加载社区角色失败:', err);
+  }
+}
+
+function renderCommunityList(characters) {
+  const container = document.getElementById('communityList');
   
-  const char = _currentDetailChar;
-  
-  // 检查是否已导入
-  const exists = AppState.characters.find(c => c.name === char.name);
-  if (exists) {
-    showToast('该角色已存在');
+  if (characters.length === 0) {
+    container.innerHTML = '<div style="text-align: center; padding: 40px 0; color: var(--text-tertiary);">暂无角色</div>';
     return;
   }
 
-  const newChar = {
-    id: 'char_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-    name: char.name,
-    description: char.description,
-    prompt: char.prompt,
-    tags: char.tags || [],
-    avatar: char.avatar,
-    isPublic: false,
-    createdAt: Date.now(),
-    importedFrom: char.id
-  };
+  container.innerHTML = characters.map(char => `
+    <div class="community-card" data-id="${char.id}" onclick="openCharacterDetail(${char.id})">
+      <div class="community-avatar">
+        ${char.avatar ? `<img src="${char.avatar}" alt="${char.name}">` : '<span class="avatar-placeholder">👤</span>'}
+      </div>
+      <div class="community-info">
+        <div class="community-name">${escapeHtml(char.name)}</div>
+        <div class="community-desc">${escapeHtml(char.description || '暂无简介')}</div>
+        <div class="community-tags">
+          ${(char.tags || []).slice(0, 3).map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+        </div>
+      </div>
+      <div class="community-likes">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        ${char.likes}
+      </div>
+    </div>
+  `).join('');
+}
 
-  AppState.characters.unshift(newChar);
-  AppState.chatHistory[newChar.id] = [];
-
-  if (AppState.characters.length === 1) {
-    AppState.currentCharacterId = newChar.id;
+async function openCharacterDetail(id) {
+  try {
+    const res = await API.get(`/api/community/characters/${id}`);
+    if (res.success) {
+      currentDetailCharacter = res.data;
+      
+      document.getElementById('detailName').textContent = res.data.name;
+      document.getElementById('detailDesc').textContent = res.data.description || '';
+      document.getElementById('detailAuthor').textContent = res.data.author;
+      document.getElementById('detailLikes').textContent = res.data.likes;
+      document.getElementById('detailPrompt').textContent = res.data.persona || '';
+      
+      const avatar = document.getElementById('detailAvatar');
+      if (res.data.avatar) {
+        avatar.innerHTML = `<img src="${res.data.avatar}" alt="${res.data.name}">`;
+      } else {
+        avatar.innerHTML = '<span class="avatar-placeholder">👤</span>';
+      }
+      
+      const tagsContainer = document.getElementById('detailTags');
+      tagsContainer.innerHTML = (res.data.tags || []).map(tag => 
+        `<span class="tag">${escapeHtml(tag)}</span>`
+      ).join('');
+      
+      openModal('modalCharacterDetail');
+    }
+  } catch (err) {
+    showToast(err.message);
   }
+}
 
-  saveToStorage();
-  renderCharacters();
-  renderCharacterSwitcher();
-  closeModal('modalCharacterDetail');
-  showToast('角色导入成功');
+async function importCharacter() {
+  if (!currentDetailCharacter) return;
+
+  try {
+    const res = await API.post('/api/characters', {
+      name: currentDetailCharacter.name,
+      avatar: currentDetailCharacter.avatar,
+      persona: currentDetailCharacter.persona,
+      description: currentDetailCharacter.description,
+      tags: currentDetailCharacter.tags,
+      isPublic: false
+    });
+
+    if (res.success) {
+      const newChar = {
+        id: res.data.id,
+        name: currentDetailCharacter.name,
+        avatar: currentDetailCharacter.avatar,
+        persona: currentDetailCharacter.persona,
+        description: currentDetailCharacter.description,
+        tags: currentDetailCharacter.tags,
+        isPublic: false,
+        created_at: Date.now()
+      };
+      AppState.characters.unshift(newChar);
+      
+      closeModal('modalCharacterDetail');
+      renderCharacters();
+      renderCharacterSwitcher();
+      showToast('角色导入成功');
+      
+      // 点赞
+      try {
+        await API.post(`/api/community/like/${currentDetailCharacter.id}`);
+      } catch (e) {}
+    }
+  } catch (err) {
+    showToast(err.message);
+  }
 }
 
 // ==================== 个人中心 ====================
 function renderProfile() {
-  document.getElementById('profileNickname').textContent = AppState.userProfile.nickname || '新用户';
-  document.getElementById('profileDesc').textContent = AppState.userProfile.description || '点击编辑个人资料';
+  document.getElementById('profileNickname').textContent = AppState.user.nickname || '新用户';
+  document.getElementById('profileDesc').textContent = AppState.user.description || '点击编辑个人资料';
   
-  const avatarEl = document.getElementById('profileAvatar');
-  if (AppState.userProfile.avatar) {
-    avatarEl.innerHTML = `<img src="${AppState.userProfile.avatar}" alt="头像">`;
+  const avatar = document.getElementById('profileAvatar');
+  if (AppState.user.avatar) {
+    avatar.innerHTML = `<img src="${AppState.user.avatar}" alt="头像">`;
   } else {
-    avatarEl.innerHTML = '<span class="avatar-placeholder">👤</span>';
+    avatar.innerHTML = '<span class="avatar-placeholder">👤</span>';
   }
+
+  updateRiceDisplay();
 }
 
-async function loadUserInfo() {
-  try {
-    const response = await fetch('/api/user/info', {
-      headers: { 'x-device-id': AppState.deviceId }
-    });
-    const data = await response.json();
-    
-    if (data.success) {
-      AppState.beans = data.data.beans || 0;
-      document.getElementById('beansAmount').textContent = AppState.beans;
-    }
-  } catch (err) {
-    console.error('加载用户信息失败:', err);
-  }
+function updateRiceDisplay() {
+  document.getElementById('riceAmount').textContent = AppState.user.rice_balance || 0;
 }
 
 function openProfileEdit() {
-  document.getElementById('profileNicknameInput').value = AppState.userProfile.nickname || '';
-  document.getElementById('profileDescInput').value = AppState.userProfile.description || '';
+  document.getElementById('profileNicknameInput').value = AppState.user.nickname || '';
+  document.getElementById('profileDescInput').value = AppState.user.description || '';
   
   const preview = document.getElementById('profileAvatarPreview');
-  if (AppState.userProfile.avatar) {
-    preview.innerHTML = `<img src="${AppState.userProfile.avatar}" alt="头像">`;
+  if (AppState.user.avatar) {
+    preview.innerHTML = `<img src="${AppState.user.avatar}" alt="头像">`;
   } else {
     preview.innerHTML = '<span class="avatar-placeholder">👤</span>';
   }
   
-  _tempProfileAvatar = AppState.userProfile.avatar || '';
   openModal('modalProfileEdit');
-}
-
-let _tempProfileAvatar = '';
-
-function handleProfileAvatar(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    _tempProfileAvatar = event.target.result;
-    document.getElementById('profileAvatarPreview').innerHTML = `<img src="${_tempProfileAvatar}" alt="头像">`;
-  };
-  reader.readAsDataURL(file);
 }
 
 async function saveProfile() {
   const nickname = document.getElementById('profileNicknameInput').value.trim();
   const description = document.getElementById('profileDescInput').value.trim();
+  const avatar = document.getElementById('profileAvatarPreview').querySelector('img')?.src || '';
 
-  if (!nickname) {
-    showToast('请输入昵称');
-    return;
-  }
-
-  AppState.userProfile.nickname = nickname;
-  AppState.userProfile.description = description;
-  AppState.userProfile.avatar = _tempProfileAvatar;
-
-  saveToStorage();
-  renderProfile();
-
-  // 同步到后端
   try {
-    await fetch('/api/user/update', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-device-id': AppState.deviceId
-      },
-      body: JSON.stringify({ nickname, avatar: _tempProfileAvatar, description })
-    });
-  } catch (e) {
-    // 忽略错误
-  }
-
-  closeModal('modalProfileEdit');
-  showToast('资料已更新');
-}
-
-// ==================== 充值 ====================
-async function openRecharge() {
-  try {
-    const response = await fetch('/api/recharge/tiers', {
-      headers: { 'x-device-id': AppState.deviceId }
-    });
-    const data = await response.json();
-    
-    if (data.success) {
-      const tiers = data.data;
-      document.getElementById('rechargeBalance').textContent = AppState.beans;
-      
-      const container = document.getElementById('rechargeTiers');
-      container.innerHTML = tiers.map((tier, index) => `
-        <div class="recharge-tier ${index === 2 ? 'hot' : ''}" data-index="${index}">
-          <div class="recharge-tier-beans">${tier.beans}</div>
-          <div class="recharge-tier-price">¥${tier.price}</div>
-        </div>
-      `).join('');
-
-      container.querySelectorAll('.recharge-tier').forEach(tier => {
-        tier.addEventListener('click', () => {
-          simulateRecharge(parseInt(tier.dataset.index));
-        });
-      });
+    const res = await API.post('/api/user/update', { nickname, description, avatar });
+    if (res.success) {
+      AppState.user = { ...AppState.user, ...res.data };
+      renderProfile();
+      closeModal('modalProfileEdit');
+      showToast('资料已更新');
     }
   } catch (err) {
-    showToast('加载充值档位失败');
+    showToast(err.message);
   }
+}
 
+function handleProfileAvatar(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    document.getElementById('profileAvatarPreview').innerHTML = `<img src="${event.target.result}" alt="头像">`;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ==================== 充值相关 ====================
+async function openRecharge() {
+  try {
+    const res = await API.get('/api/recharge/tiers');
+    if (res.success) {
+      renderRechargeTiers(res.data);
+    }
+  } catch (err) {
+    showToast(err.message);
+  }
+  
+  document.getElementById('rechargeBalance').textContent = AppState.user.rice_balance || 0;
   openModal('modalRecharge');
 }
 
-async function simulateRecharge(tierIndex) {
+function renderRechargeTiers(tiers) {
+  const container = document.getElementById('rechargeTiers');
+  container.innerHTML = tiers.map((tier, index) => `
+    <div class="recharge-tier" onclick="handleRecharge(${index})">
+      <div class="recharge-tier-rice">
+        ${tier.rice}
+        ${tier.bonus > 0 ? `<span class="recharge-bonus">+${tier.bonus}</span>` : ''}
+      </div>
+      <div class="recharge-tier-price">¥${tier.price}</div>
+    </div>
+  `).join('');
+}
+
+async function handleRecharge(tierIndex) {
   try {
-    const response = await fetch('/api/recharge/simulate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-device-id': AppState.deviceId
-      },
-      body: JSON.stringify({ tierIndex })
-    });
-    const data = await response.json();
-    
-    if (data.success) {
-      AppState.beans = data.data.beans;
-      document.getElementById('beansAmount').textContent = AppState.beans;
-      document.getElementById('rechargeBalance').textContent = AppState.beans;
+    const res = await API.post('/api/recharge/simulate', { tierIndex });
+    if (res.success) {
+      AppState.user.rice_balance = res.data.rice_balance;
+      updateRiceDisplay();
+      document.getElementById('rechargeBalance').textContent = res.data.rice_balance;
       showToast('充值成功！');
-    } else {
-      showToast(data.error || '充值失败');
     }
   } catch (err) {
-    showToast('充值失败');
+    showToast(err.message);
   }
 }
 
-async function openBeansDetail() {
-  document.getElementById('beansSummaryBalance').textContent = AppState.beans;
-  
-  const list = document.getElementById('transactionList');
-  list.innerHTML = '<div class="loading"><div class="loading-spinner"></div></div>';
+async function openRiceDetail() {
+  document.getElementById('riceSummaryBalance').textContent = AppState.user.rice_balance || 0;
+  AppState.txFilterType = 'all';
+  await loadTransactions();
+  openModal('modalRiceDetail');
+}
 
+async function loadTransactions() {
   try {
-    const response = await fetch('/api/user/transactions', {
-      headers: { 'x-device-id': AppState.deviceId }
-    });
-    const data = await response.json();
+    const params = new URLSearchParams();
+    if (AppState.txFilterType !== 'all') {
+      params.set('type', AppState.txFilterType);
+    }
     
-    if (data.success) {
-      const txs = data.data;
-      if (txs.length === 0) {
-        list.innerHTML = '<div style="text-align: center; color: var(--text-tertiary); padding: 20px 0;">暂无记录</div>';
-      } else {
-        list.innerHTML = txs.map(tx => `
-          <div class="transaction-item">
-            <div class="transaction-info">
-              <div class="transaction-desc">${escapeHtml(tx.description)}</div>
-              <div class="transaction-time">${formatTime(tx.createdAt)}</div>
-            </div>
-            <div class="transaction-amount ${tx.type === 'recharge' ? 'positive' : 'negative'}">
-              ${tx.type === 'recharge' ? '+' : '-'}${tx.amount}
-            </div>
-          </div>
-        `).join('');
-      }
+    const res = await API.get(`/api/user/transactions?${params}`);
+    if (res.success) {
+      renderTransactions(res.data);
     }
   } catch (err) {
-    list.innerHTML = '<div style="text-align: center; color: var(--text-tertiary); padding: 20px 0;">加载失败</div>';
+    console.error('加载交易记录失败:', err);
+  }
+}
+
+function renderTransactions(transactions) {
+  const container = document.getElementById('transactionList');
+  
+  if (transactions.length === 0) {
+    container.innerHTML = '<div style="text-align: center; padding: 40px 0; color: var(--text-tertiary);">暂无记录</div>';
+    return;
   }
 
-  openModal('modalBeansDetail');
+  container.innerHTML = transactions.map(tx => `
+    <div class="transaction-item">
+      <div class="transaction-info">
+        <div class="transaction-desc">${escapeHtml(tx.description)}</div>
+        <div class="transaction-time">${formatTime(tx.created_at)}</div>
+      </div>
+      <div class="transaction-amount ${tx.type === 'recharge' ? 'positive' : 'negative'}">
+        ${tx.type === 'recharge' ? '+' : '-'}${tx.amount}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openOrders() {
+  try {
+    const res = await API.get('/api/orders');
+    if (res.success) {
+      renderOrders(res.data);
+    }
+  } catch (err) {
+    showToast(err.message);
+  }
+  openModal('modalOrders');
+}
+
+function renderOrders(orders) {
+  const container = document.getElementById('orderList');
+  
+  if (orders.length === 0) {
+    container.innerHTML = '<div style="text-align: center; padding: 40px 0; color: var(--text-tertiary);">暂无订单</div>';
+    return;
+  }
+
+  container.innerHTML = orders.map(order => `
+    <div class="order-item">
+      <div class="order-info">
+        <div class="order-no">订单号：${order.order_no}</div>
+        <div class="order-time">${formatTime(order.created_at)}</div>
+      </div>
+      <div class="order-amount">
+        <div class="order-rice">${order.rice_amount} 米粒</div>
+        <div class="order-price">¥${order.amount}</div>
+      </div>
+      <div class="order-status ${order.status}">
+        ${order.status === 'paid' ? '已支付' : order.status === 'pending' ? '待支付' : '已取消'}
+      </div>
+    </div>
+  `).join('');
 }
 
 // ==================== 自定义装扮 ====================
@@ -1021,248 +1225,133 @@ function switchThemeTab(tab) {
   document.getElementById('themePanel' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
 }
 
-function sanitizeCss(css) {
-  // 过滤危险内容
-  return css
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+\s*=/gi, '')
-    .replace(/expression\s*\(/gi, '');
-}
-
 function applyUiCss() {
   const css = document.getElementById('cssUi').value;
-  const safeCss = sanitizeCss(css);
-  
-  AppState.themeConfig.uiCss = safeCss;
-  document.getElementById('customUiStyle').textContent = safeCss;
-  
-  saveToStorage();
+  const sanitized = sanitizeCss(css);
+  AppState.themeConfig.uiCss = sanitized;
+  document.getElementById('customUiStyle').textContent = sanitized;
+  saveThemeToStorage();
   showToast('样式已应用');
 }
 
 function resetUiCss() {
   AppState.themeConfig.uiCss = '';
-  document.getElementById('cssUi').value = '';
   document.getElementById('customUiStyle').textContent = '';
-  saveToStorage();
+  document.getElementById('cssUi').value = '';
+  saveThemeToStorage();
   showToast('已重置');
 }
 
 function applyBubbleCss() {
   const css = document.getElementById('cssBubble').value;
-  const safeCss = sanitizeCss(css);
-  
-  AppState.themeConfig.bubbleCss = safeCss;
-  document.getElementById('customBubbleStyle').textContent = `.chat-bubble { ${safeCss} }`;
-  
-  saveToStorage();
+  const sanitized = sanitizeCss(css);
+  AppState.themeConfig.bubbleCss = sanitized;
+  document.getElementById('customBubbleStyle').textContent = `.chat-bubble { ${sanitized} }`;
+  saveThemeToStorage();
   showToast('气泡样式已应用');
 }
 
 function resetBubbleCss() {
   AppState.themeConfig.bubbleCss = '';
-  document.getElementById('cssBubble').value = '';
   document.getElementById('customBubbleStyle').textContent = '';
-  saveToStorage();
+  document.getElementById('cssBubble').value = '';
+  saveThemeToStorage();
   showToast('已重置');
 }
-
-let _tempWallpaper = '';
 
 function handleWallpaperUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
-  
+
   const reader = new FileReader();
   reader.onload = (event) => {
-    _tempWallpaper = event.target.result;
+    AppState.themeConfig.wallpaper = event.target.result;
     showToast('壁纸已选择，点击应用生效');
   };
   reader.readAsDataURL(file);
 }
 
 function applyWallpaper() {
-  if (!_tempWallpaper && !AppState.themeConfig.wallpaper) {
-    showToast('请先上传壁纸');
-    return;
-  }
-
   const opacity = parseInt(document.getElementById('wallpaperOpacity').value);
   const blur = parseInt(document.getElementById('wallpaperBlur').value);
   
-  if (_tempWallpaper) {
-    AppState.themeConfig.wallpaper = _tempWallpaper;
-  }
   AppState.themeConfig.wallpaperOpacity = opacity;
   AppState.themeConfig.wallpaperBlur = blur;
-
+  
   applyWallpaperStyle();
-  saveToStorage();
+  saveThemeToStorage();
   showToast('壁纸已应用');
-}
-
-function applyWallpaperStyle() {
-  const chatPage = document.getElementById('page-chat');
-  const wallpaper = AppState.themeConfig.wallpaper;
-  const opacity = AppState.themeConfig.wallpaperOpacity / 100;
-  const blur = AppState.themeConfig.wallpaperBlur;
-
-  if (wallpaper) {
-    chatPage.style.backgroundImage = `url(${wallpaper})`;
-    chatPage.style.backgroundSize = 'cover';
-    chatPage.style.backgroundPosition = 'center';
-    chatPage.style.filter = `blur(${blur}px)`;
-    chatPage.style.opacity = 1;
-    
-    // 用伪元素实现透明度
-    const existingStyle = document.getElementById('wallpaperStyle');
-    if (!existingStyle) {
-      const style = document.createElement('style');
-      style.id = 'wallpaperStyle';
-      document.head.appendChild(style);
-    }
-    document.getElementById('wallpaperStyle').textContent = `
-      #page-chat::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: var(--bg-gradient-soft);
-        opacity: ${1 - opacity};
-        z-index: 0;
-      }
-      #page-chat > * {
-        position: relative;
-        z-index: 1;
-      }
-    `;
-  }
 }
 
 function resetWallpaper() {
   AppState.themeConfig.wallpaper = '';
   AppState.themeConfig.wallpaperOpacity = 30;
   AppState.themeConfig.wallpaperBlur = 0;
-  _tempWallpaper = '';
   
   document.getElementById('wallpaperOpacity').value = 30;
   document.getElementById('wallpaperOpacityValue').textContent = '30%';
   document.getElementById('wallpaperBlur').value = 0;
   document.getElementById('wallpaperBlurValue').textContent = '0px';
   
-  const chatPage = document.getElementById('page-chat');
-  chatPage.style.backgroundImage = '';
-  chatPage.style.filter = '';
-  
-  const style = document.getElementById('wallpaperStyle');
-  if (style) style.remove();
-  
-  saveToStorage();
+  applyWallpaperStyle();
+  saveThemeToStorage();
   showToast('已重置');
 }
 
+function applyWallpaperStyle() {
+  const chatPage = document.getElementById('page-chat');
+  const chatMessages = document.getElementById('chatMessages');
+  
+  if (AppState.themeConfig.wallpaper) {
+    chatMessages.style.backgroundImage = `url(${AppState.themeConfig.wallpaper})`;
+    chatMessages.style.backgroundSize = 'cover';
+    chatMessages.style.backgroundPosition = 'center';
+    chatMessages.style.opacity = 1;
+    
+    // 使用伪元素方式实现透明度
+    chatMessages.style.setProperty('--wallpaper-opacity', AppState.themeConfig.wallpaperOpacity / 100);
+    chatMessages.style.setProperty('--wallpaper-blur', AppState.themeConfig.wallpaperBlur + 'px');
+  } else {
+    chatMessages.style.backgroundImage = '';
+  }
+}
+
 function applyThemeConfig() {
-  // 应用UI样式
   if (AppState.themeConfig.uiCss) {
     document.getElementById('customUiStyle').textContent = AppState.themeConfig.uiCss;
   }
-  
-  // 应用气泡样式
   if (AppState.themeConfig.bubbleCss) {
     document.getElementById('customBubbleStyle').textContent = `.chat-bubble { ${AppState.themeConfig.bubbleCss} }`;
   }
-  
-  // 应用壁纸
   if (AppState.themeConfig.wallpaper) {
-    applyWallpaperStyle();
+    setTimeout(applyWallpaperStyle, 100);
   }
 }
 
-// ==================== 聊天菜单 ====================
-function showChatMenu() {
-  if (!AppState.currentCharacterId) {
-    showToast('请先选择角色');
-    return;
-  }
-  
-  showConfirm('清空对话', '确定要清空当前对话记录吗？此操作不可恢复。', () => {
-    AppState.chatHistory[AppState.currentCharacterId] = [];
-    renderMessages();
-    saveToStorage();
-    showToast('对话已清空');
-  });
-}
-
-// ==================== 清空缓存 ====================
-function clearCache() {
-  showConfirm('清空缓存', '确定要清空所有本地数据吗？包括角色、对话历史和装扮设置。此操作不可恢复。', () => {
-    localStorage.removeItem(STORAGE_KEYS.CHARACTERS);
-    localStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
-    localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
-    localStorage.removeItem(STORAGE_KEYS.THEME_CONFIG);
-    
-    AppState.characters = [];
-    AppState.chatHistory = {};
-    AppState.currentCharacterId = null;
-    AppState.userProfile = { nickname: '新用户', avatar: '', description: '' };
-    AppState.themeConfig = { uiCss: '', bubbleCss: '', wallpaper: '', wallpaperOpacity: 30, wallpaperBlur: 0 };
-    
-    document.getElementById('customUiStyle').textContent = '';
-    document.getElementById('customBubbleStyle').textContent = '';
-    const wallpaperStyle = document.getElementById('wallpaperStyle');
-    if (wallpaperStyle) wallpaperStyle.remove();
-    
-    renderCharacters();
-    renderCharacterSwitcher();
-    renderProfile();
-    renderMessages();
-    
-    showToast('缓存已清空');
-  });
-}
-
-// ==================== 弹窗控制 ====================
-function openModal(modalId) {
-  document.getElementById(modalId).classList.add('active');
-  document.body.style.overflow = 'hidden';
-}
-
-function closeModal(modalId) {
-  document.getElementById(modalId).classList.remove('active');
-  document.body.style.overflow = '';
-}
-
-// ==================== 确认对话框 ====================
-function showConfirm(title, message, onOk, onCancel) {
-  document.getElementById('confirmTitle').textContent = title;
-  document.getElementById('confirmMessage').textContent = message;
-  window._confirmOk = onOk;
-  window._confirmCancel = onCancel;
-  openModal('modalConfirm');
-}
-
-// ==================== Toast 提示 ====================
-let _toastTimer = null;
-
+// ==================== 工具函数 ====================
 function showToast(message, duration = 2000) {
   const toast = document.getElementById('toast');
   toast.textContent = message;
   toast.classList.add('show');
   
-  if (_toastTimer) clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => {
+  setTimeout(() => {
     toast.classList.remove('show');
   }, duration);
 }
 
-// ==================== 工具函数 ====================
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+function openModal(modalId) {
+  document.getElementById(modalId).classList.add('active');
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove('active');
+}
+
+function showConfirm(message, onOk, onCancel) {
+  document.getElementById('confirmMessage').textContent = message;
+  window._confirmOk = onOk;
+  window._confirmCancel = onCancel;
+  openModal('modalConfirm');
 }
 
 function formatTime(timestamp) {
@@ -1270,30 +1359,41 @@ function formatTime(timestamp) {
   const now = new Date();
   const diff = now - date;
   
-  if (diff < 60000) return '刚刚';
-  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
-  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
-  
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  
-  if (diff < 604800000) {
-    return `${month}月${day}日 ${hours}:${minutes}`;
+  if (diff < 60000) {
+    return '刚刚';
+  } else if (diff < 3600000) {
+    return Math.floor(diff / 60000) + '分钟前';
+  } else if (diff < 86400000) {
+    return Math.floor(diff / 3600000) + '小时前';
+  } else if (diff < 604800000) {
+    return Math.floor(diff / 86400000) + '天前';
+  } else {
+    return date.getFullYear() + '-' + 
+      (date.getMonth() + 1).toString().padStart(2, '0') + '-' + 
+      date.getDate().toString().padStart(2, '0');
   }
-  
-  return `${date.getFullYear()}/${month}/${day}`;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 function debounce(func, wait) {
   let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
+  return function(...args) {
     clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
+    timeout = setTimeout(() => func.apply(this, args), wait);
   };
+}
+
+function sanitizeCss(css) {
+  if (!css) return '';
+  // 移除危险内容
+  let sanitized = css.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+  sanitized = sanitized.replace(/javascript:/gi, '');
+  sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+  sanitized = sanitized.replace(/expression\s*\(/gi, '');
+  return sanitized;
 }

@@ -6,15 +6,62 @@
   <meta name="theme-color" content="#FFE4EC">
   <title>Mochi AI Chat - 你的AI角色聊天伙伴</title>
   <link rel="stylesheet" href="style.css">
+  <style id="customUiStyle"></style>
+  <style id="customBubbleStyle"></style>
 </head>
 <body>
   <div id="app">
+    <!-- ==================== 登录页面 ==================== -->
+    <div class="page page-login active" id="page-login">
+      <div class="login-container">
+        <div class="login-logo">
+          <div class="login-logo-icon">🍡</div>
+          <h1 class="login-title">Mochi AI</h1>
+          <p class="login-subtitle">你的AI角色聊天伙伴</p>
+        </div>
+        
+        <div class="login-tabs">
+          <button class="login-tab active" data-tab="login">登录</button>
+          <button class="login-tab" data-tab="register">注册</button>
+        </div>
+
+        <!-- 登录表单 -->
+        <div class="login-form active" id="loginForm">
+          <div class="form-group">
+            <label>用户名</label>
+            <input type="text" class="form-input" id="loginUsername" placeholder="请输入用户名">
+          </div>
+          <div class="form-group">
+            <label>密码</label>
+            <input type="password" class="form-input" id="loginPassword" placeholder="请输入密码">
+          </div>
+          <button class="btn-primary btn-full" id="btnLogin">登录</button>
+        </div>
+
+        <!-- 注册表单 -->
+        <div class="login-form" id="registerForm">
+          <div class="form-group">
+            <label>用户名</label>
+            <input type="text" class="form-input" id="registerUsername" placeholder="3-20个字符">
+          </div>
+          <div class="form-group">
+            <label>密码</label>
+            <input type="password" class="form-input" id="registerPassword" placeholder="至少6位">
+          </div>
+          <div class="form-group">
+            <label>确认密码</label>
+            <input type="password" class="form-input" id="registerConfirmPassword" placeholder="再次输入密码">
+          </div>
+          <button class="btn-primary btn-full" id="btnRegister">注册</button>
+          <p class="register-tip">注册即送 <strong>1000</strong> 米粒</p>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== 聊天页面 ==================== -->
-    <div class="page page-chat active" id="page-chat">
-      <!-- 顶部角色切换栏 -->
+    <div class="page page-chat" id="page-chat">
       <div class="chat-header">
         <div class="character-switcher" id="characterSwitcher">
-          <!-- 角色头像列表由JS动态生成 -->
         </div>
         <div class="chat-header-actions">
           <button class="icon-btn" id="btnChatMenu" title="菜单">
@@ -26,13 +73,8 @@
           </button>
         </div>
       </div>
-
-      <!-- 消息列表 -->
       <div class="chat-messages" id="chatMessages">
-        <!-- 消息由JS动态生成 -->
       </div>
-
-      <!-- 底部输入框 -->
       <div class="chat-input-bar">
         <textarea
           class="chat-input"
@@ -59,11 +101,8 @@
           </svg>
         </button>
       </div>
-
       <div class="character-list" id="characterList">
-        <!-- 角色卡片由JS动态生成 -->
       </div>
-
       <div class="empty-state" id="characterEmpty" style="display:none;">
         <div class="empty-icon">🌸</div>
         <p>还没有角色哦</p>
@@ -76,8 +115,6 @@
       <div class="page-header">
         <h1 class="page-title">角色社区</h1>
       </div>
-
-      <!-- 搜索栏 -->
       <div class="search-bar">
         <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/>
@@ -85,16 +122,11 @@
         </svg>
         <input type="text" class="search-input" id="communitySearch" placeholder="搜索角色...">
       </div>
-
-      <!-- 筛选标签 -->
       <div class="filter-tabs">
         <button class="filter-tab active" data-sort="hot">最热</button>
         <button class="filter-tab" data-sort="new">最新</button>
       </div>
-
-      <!-- 角色列表 -->
       <div class="community-list" id="communityList">
-        <!-- 社区角色卡片由JS动态生成 -->
       </div>
     </div>
 
@@ -103,8 +135,6 @@
       <div class="page-header">
         <h1 class="page-title">我的</h1>
       </div>
-
-      <!-- 用户信息卡 -->
       <div class="profile-card">
         <div class="profile-avatar" id="profileAvatar">
           <span class="avatar-placeholder">👤</span>
@@ -115,12 +145,10 @@
         </div>
         <button class="profile-edit-btn" id="btnEditProfile">编辑</button>
       </div>
-
-      <!-- 豆子余额卡 -->
-      <div class="beans-card" id="beansCard">
-        <div class="beans-info">
-          <span class="beans-label">我的豆子</span>
-          <span class="beans-amount" id="beansAmount">0</span>
+      <div class="rice-card" id="riceCard">
+        <div class="rice-info">
+          <span class="rice-label">我的米粒</span>
+          <span class="rice-amount" id="riceAmount">0</span>
         </div>
         <button class="recharge-btn" id="btnRecharge">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -130,12 +158,17 @@
           充值
         </button>
       </div>
-
-      <!-- 功能列表 -->
       <div class="menu-list">
-        <div class="menu-item" id="menuBeans">
+        <div class="menu-item" id="menuRice">
           <span class="menu-icon">💰</span>
-          <span class="menu-text">豆子明细</span>
+          <span class="menu-text">米粒明细</span>
+          <svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
+        <div class="menu-item" id="menuOrders">
+          <span class="menu-icon">📋</span>
+          <span class="menu-text">充值记录</span>
           <svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="9 18 15 12 9 6"/>
           </svg>
@@ -154,9 +187,9 @@
             <polyline points="9 18 15 12 9 6"/>
           </svg>
         </div>
-        <div class="menu-item" id="menuClear">
-          <span class="menu-icon">🗑️</span>
-          <span class="menu-text">清空缓存</span>
+        <div class="menu-item" id="menuLogout">
+          <span class="menu-icon">🚪</span>
+          <span class="menu-text">退出登录</span>
           <svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="9 18 15 12 9 6"/>
           </svg>
@@ -165,7 +198,7 @@
     </div>
 
     <!-- ==================== 底部导航栏 ==================== -->
-    <div class="bottom-nav">
+    <div class="bottom-nav" id="bottomNav" style="display:none;">
       <div class="nav-item active" data-page="chat">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -208,36 +241,35 @@
           <button class="modal-close" data-modal="modalCharacterEdit">×</button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label>角色头像</label>
-            <div class="avatar-upload">
-              <div class="avatar-preview" id="characterAvatarPreview">
-                <span class="avatar-placeholder">👤</span>
-              </div>
-              <input type="file" id="characterAvatarInput" accept="image/*" style="display:none;">
-              <button class="btn-secondary" id="btnUploadAvatar">上传头像</button>
+          <div class="form-group avatar-upload">
+            <div class="avatar-preview" id="characterAvatarPreview">
+              <span class="avatar-placeholder">👤</span>
             </div>
+            <button class="btn-secondary" id="btnUploadAvatar" style="padding: 6px 16px; font-size: 13px;">
+              上传头像
+            </button>
+            <input type="file" id="characterAvatarInput" accept="image/*" style="display:none;">
           </div>
           <div class="form-group">
-            <label>角色名称 *</label>
-            <input type="text" class="form-input" id="characterName" placeholder="给角色起个名字">
+            <label>角色名称</label>
+            <input type="text" class="form-input" id="characterName" placeholder="给你的角色起个名字">
           </div>
           <div class="form-group">
             <label>角色简介</label>
-            <input type="text" class="form-input" id="characterDesc" placeholder="一句话介绍这个角色">
+            <input type="text" class="form-input" id="characterDesc" placeholder="一句话介绍你的角色">
           </div>
           <div class="form-group">
-            <label>人设 Prompt *</label>
-            <textarea class="form-textarea" id="characterPrompt" placeholder="详细描述角色的性格、背景、说话方式等...&#10;例如：你是一位温柔的学姐，性格温柔体贴..."></textarea>
+            <label>角色人设</label>
+            <textarea class="form-textarea" id="characterPrompt" placeholder="详细描述角色的性格、背景、说话方式等..."></textarea>
           </div>
           <div class="form-group">
-            <label>标签（用逗号分隔）</label>
+            <label>标签（逗号分隔）</label>
             <input type="text" class="form-input" id="characterTags" placeholder="如：温柔,治愈,学姐">
           </div>
           <div class="form-group">
             <label class="checkbox-label">
               <input type="checkbox" id="characterPublic">
-              <span>公开到社区（其他用户可见）</span>
+              <span>公开到社区</span>
             </label>
           </div>
         </div>
@@ -251,31 +283,31 @@
     <!-- ==================== 弹窗：角色详情 ==================== -->
     <div class="modal" id="modalCharacterDetail">
       <div class="modal-overlay"></div>
-      <div class="modal-content">
+      <div class="modal-content modal-large">
         <div class="modal-header">
-          <h3 id="detailCharName">角色详情</h3>
+          <h3>角色详情</h3>
           <button class="modal-close" data-modal="modalCharacterDetail">×</button>
         </div>
         <div class="modal-body">
           <div class="detail-avatar" id="detailAvatar">
             <span class="avatar-placeholder">👤</span>
           </div>
-          <div class="detail-name" id="detailName"></div>
-          <div class="detail-desc" id="detailDesc"></div>
+          <div class="detail-name" id="detailName">角色名称</div>
+          <div class="detail-desc" id="detailDesc">角色简介</div>
           <div class="detail-tags" id="detailTags"></div>
           <div class="detail-info">
             <div class="detail-info-item">
               <span class="detail-info-label">上传者</span>
-              <span class="detail-info-value" id="detailAuthor"></span>
+              <span class="detail-info-value" id="detailAuthor">官方</span>
             </div>
             <div class="detail-info-item">
               <span class="detail-info-label">热度</span>
-              <span class="detail-info-value" id="detailLikes"></span>
+              <span class="detail-info-value" id="detailLikes">0</span>
             </div>
           </div>
           <div class="detail-section">
-            <div class="detail-section-title">角色设定</div>
-            <div class="detail-prompt" id="detailPrompt"></div>
+            <div class="detail-section-title">完整人设</div>
+            <div class="detail-prompt" id="detailPrompt">角色人设内容...</div>
           </div>
         </div>
         <div class="modal-footer">
@@ -290,27 +322,26 @@
       <div class="modal-overlay"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <h3>编辑个人资料</h3>
+          <h3>编辑资料</h3>
           <button class="modal-close" data-modal="modalProfileEdit">×</button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label>头像</label>
-            <div class="avatar-upload">
-              <div class="avatar-preview" id="profileAvatarPreview">
-                <span class="avatar-placeholder">👤</span>
-              </div>
-              <input type="file" id="profileAvatarInput" accept="image/*" style="display:none;">
-              <button class="btn-secondary" id="btnUploadProfileAvatar">上传头像</button>
+          <div class="form-group avatar-upload">
+            <div class="avatar-preview" id="profileAvatarPreview">
+              <span class="avatar-placeholder">👤</span>
             </div>
+            <button class="btn-secondary" id="btnUploadProfileAvatar" style="padding: 6px 16px; font-size: 13px;">
+              上传头像
+            </button>
+            <input type="file" id="profileAvatarInput" accept="image/*" style="display:none;">
           </div>
           <div class="form-group">
             <label>昵称</label>
-            <input type="text" class="form-input" id="profileNicknameInput" placeholder="你的昵称">
+            <input type="text" class="form-input" id="profileNicknameInput" placeholder="请输入昵称">
           </div>
           <div class="form-group">
             <label>个人简介</label>
-            <textarea class="form-textarea" id="profileDescInput" placeholder="介绍一下你自己..."></textarea>
+            <textarea class="form-textarea" id="profileDescInput" placeholder="介绍一下你自己..." style="min-height: 80px;"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -330,35 +361,51 @@
         </div>
         <div class="modal-body">
           <div class="recharge-balance">
-            <span>当前余额</span>
-            <span class="recharge-amount" id="rechargeBalance">0</span>
-            <span>豆子</span>
+            当前余额：<span class="recharge-amount" id="rechargeBalance">0</span> 米粒
           </div>
           <div class="recharge-tiers" id="rechargeTiers">
-            <!-- 充值档位由JS动态生成 -->
           </div>
-          <p class="recharge-tip">💡 测试模式：点击档位即可模拟充值成功</p>
+          <p class="recharge-tip">米粒可用于AI对话，1000token = 1米粒</p>
         </div>
       </div>
     </div>
 
-    <!-- ==================== 弹窗：豆子明细 ==================== -->
-    <div class="modal" id="modalBeansDetail">
+    <!-- ==================== 弹窗：米粒明细 ==================== -->
+    <div class="modal" id="modalRiceDetail">
       <div class="modal-overlay"></div>
       <div class="modal-content modal-large">
         <div class="modal-header">
-          <h3>豆子明细</h3>
-          <button class="modal-close" data-modal="modalBeansDetail">×</button>
+          <h3>米粒明细</h3>
+          <button class="modal-close" data-modal="modalRiceDetail">×</button>
         </div>
         <div class="modal-body">
-          <div class="beans-summary">
-            <div class="beans-summary-item">
-              <span class="beans-summary-label">当前余额</span>
-              <span class="beans-summary-value" id="beansSummaryBalance">0</span>
+          <div class="rice-summary">
+            <div class="rice-summary-item">
+              <span class="rice-summary-label">当前余额</span>
+              <span class="rice-summary-value" id="riceSummaryBalance">0</span>
             </div>
           </div>
+          <div class="filter-tabs" style="margin-bottom: 16px;">
+            <button class="filter-tab active" data-tx-type="all">全部</button>
+            <button class="filter-tab" data-tx-type="recharge">充值</button>
+            <button class="filter-tab" data-tx-type="consume">消费</button>
+          </div>
           <div class="transaction-list" id="transactionList">
-            <!-- 交易记录由JS动态生成 -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 弹窗：充值记录 ==================== -->
+    <div class="modal" id="modalOrders">
+      <div class="modal-overlay"></div>
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h3>充值记录</h3>
+          <button class="modal-close" data-modal="modalOrders">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="order-list" id="orderList">
           </div>
         </div>
       </div>
@@ -379,11 +426,10 @@
             <button class="theme-tab" data-theme-tab="wallpaper">聊天壁纸</button>
           </div>
 
-          <!-- 页面UI装扮 -->
           <div class="theme-panel active" id="themePanelUi">
             <div class="form-group">
-              <label>自定义CSS（全局样式）</label>
-              <textarea class="form-textarea css-input" id="cssUi" placeholder="/* 在这里输入自定义CSS */&#10;/* 例如：&#10;.page-title { color: #ff6b9d; }&#10;.bottom-nav { background: #fff0f5; }&#10;*/"></textarea>
+              <label>自定义CSS（全局样式覆盖）</label>
+              <textarea class="form-textarea css-input" id="cssUi" placeholder="/* 输入自定义CSS代码 */"></textarea>
             </div>
             <div class="theme-actions">
               <button class="btn-secondary" id="btnResetUi">重置默认</button>
@@ -391,11 +437,10 @@
             </div>
           </div>
 
-          <!-- 聊天气泡装扮 -->
           <div class="theme-panel" id="themePanelBubble">
             <div class="form-group">
-              <label>自定义气泡CSS（仅作用于 .chat-bubble）</label>
-              <textarea class="form-textarea css-input" id="cssBubble" placeholder="/* 自定义聊天气泡样式 */&#10;/* 例如：&#10;border-radius: 20px;&#10;background: linear-gradient(135deg, #ff9ec8, #ff6b9d);&#10;color: white;&#10;*/"></textarea>
+              <label>自定义气泡CSS（仅作用于.chat-bubble）</label>
+              <textarea class="form-textarea css-input" id="cssBubble" placeholder="/* 输入气泡样式，如：background: #xxx; border-radius: 10px; */"></textarea>
             </div>
             <div class="theme-actions">
               <button class="btn-secondary" id="btnResetBubble">重置默认</button>
@@ -403,21 +448,19 @@
             </div>
           </div>
 
-          <!-- 聊天壁纸装扮 -->
           <div class="theme-panel" id="themePanelWallpaper">
-            <div class="form-group">
-              <label>聊天壁纸</label>
-              <div class="wallpaper-upload">
-                <input type="file" id="wallpaperInput" accept="image/*" style="display:none;">
-                <button class="btn-secondary" id="btnUploadWallpaper">上传壁纸</button>
-              </div>
+            <div class="form-group wallpaper-upload">
+              <button class="btn-secondary" id="btnUploadWallpaper" style="padding: 10px 24px;">
+                📷 上传壁纸图片
+              </button>
+              <input type="file" id="wallpaperInput" accept="image/*" style="display:none;">
             </div>
             <div class="form-group">
-              <label>透明度 <span id="wallpaperOpacityValue">30%</span></label>
+              <label>透明度：<span id="wallpaperOpacityValue">30%</span></label>
               <input type="range" class="form-range" id="wallpaperOpacity" min="0" max="100" value="30">
             </div>
             <div class="form-group">
-              <label>模糊度 <span id="wallpaperBlurValue">0px</span></label>
+              <label>模糊度：<span id="wallpaperBlurValue">0px</span></label>
               <input type="range" class="form-range" id="wallpaperBlur" min="0" max="20" value="0">
             </div>
             <div class="theme-actions">
@@ -434,28 +477,30 @@
       <div class="modal-overlay"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <h3>关于 Mochi AI Chat</h3>
+          <h3>关于我们</h3>
           <button class="modal-close" data-modal="modalAbout">×</button>
         </div>
-        <div class="modal-body about-content">
-          <div class="about-logo">🌸</div>
-          <h2>Mochi AI Chat</h2>
-          <p class="about-version">版本 1.0.0</p>
-          <p class="about-desc">
-            一款治愈系AI角色聊天平台<br>
-            创造属于你的AI角色伙伴<br>
-            享受温暖有趣的对话体验
-          </p>
-          <div class="about-features">
-            <div class="about-feature">🎭 自定义角色</div>
-            <div class="about-feature">🌐 社区分享</div>
-            <div class="about-feature">🎨 个性装扮</div>
+        <div class="modal-body">
+          <div class="about-content">
+            <div class="about-logo">🍡</div>
+            <h2>Mochi AI Chat</h2>
+            <div class="about-version">v2.0.0</div>
+            <p class="about-desc">
+              一款治愈系AI角色聊天平台<br>
+              支持自定义角色、社区分享、个性装扮<br>
+              让每一次对话都充满温度
+            </p>
+            <div class="about-features">
+              <span class="about-feature">🎭 自定义角色</span>
+              <span class="about-feature">🌐 社区分享</span>
+              <span class="about-feature">🎨 个性装扮</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ==================== 弹窗：确认对话框 ==================== -->
+    <!-- ==================== 确认对话框 ==================== -->
     <div class="modal" id="modalConfirm">
       <div class="modal-overlay"></div>
       <div class="modal-content modal-small">
@@ -463,20 +508,16 @@
           <div class="confirm-icon">⚠️</div>
           <div class="confirm-title" id="confirmTitle">确认操作</div>
           <div class="confirm-message" id="confirmMessage">确定要执行此操作吗？</div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-secondary" id="btnConfirmCancel">取消</button>
-          <button class="btn-danger" id="btnConfirmOk">确定</button>
+          <div class="modal-footer" style="padding-top: 0;">
+            <button class="btn-secondary" id="btnConfirmCancel">取消</button>
+            <button class="btn-primary" id="btnConfirmOk">确定</button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- ==================== Toast 提示 ==================== -->
     <div class="toast" id="toast"></div>
-
-    <!-- 自定义样式注入标签 -->
-    <style id="customUiStyle"></style>
-    <style id="customBubbleStyle"></style>
   </div>
 
   <script src="app.js"></script>

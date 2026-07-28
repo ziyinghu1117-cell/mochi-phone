@@ -1776,3 +1776,613 @@ ul, ol {
     padding-bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
   }
 }
+
+/* ==================== 登录页面 ==================== */
+.page-login {
+  bottom: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xxl);
+  background: var(--bg-gradient);
+}
+
+.page-login.active {
+  display: flex;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 360px;
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.login-logo-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.login-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.login-tabs {
+  display: flex;
+  background: var(--card-bg-light);
+  border-radius: var(--radius-full);
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.login-tab {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: all var(--transition-normal);
+}
+
+.login-tab.active {
+  background: var(--primary-gradient);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+
+.login-form {
+  display: none;
+}
+
+.login-form.active {
+  display: block;
+}
+
+.register-tip {
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-top: 16px;
+}
+
+.register-tip strong {
+  color: var(--primary-color);
+}
+
+/* ==================== 按钮样式 ==================== */
+.btn-primary {
+  background: var(--primary-gradient);
+  color: white;
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 15px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+  background: var(--card-bg-light);
+  color: var(--text-secondary);
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  font-size: 14px;
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary:active {
+  background: var(--card-bg-hover);
+}
+
+.btn-full {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* ==================== 米粒卡片 ==================== */
+.rice-card {
+  margin: var(--spacing-lg) var(--spacing-xl);
+  padding: var(--spacing-xl);
+  background: var(--primary-gradient);
+  border-radius: var(--radius-xl);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-md);
+}
+
+.rice-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.rice-label {
+  font-size: 13px;
+  opacity: 0.9;
+  margin-bottom: 4px;
+}
+
+.rice-amount {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.recharge-btn {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  backdrop-filter: blur(10px);
+  transition: all var(--transition-fast);
+}
+
+.recharge-btn:active {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.recharge-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ==================== 充值中心 ==================== */
+.recharge-balance {
+  text-align: center;
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.recharge-amount {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.recharge-tiers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.recharge-tier {
+  background: var(--card-bg-light);
+  border-radius: var(--radius-lg);
+  padding: 16px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: 2px solid transparent;
+}
+
+.recharge-tier:active {
+  transform: scale(0.98);
+  border-color: var(--primary-color);
+  background: var(--card-bg-hover);
+}
+
+.recharge-tier-rice {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  position: relative;
+}
+
+.recharge-bonus {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  background: #FF6B6B;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+}
+
+.recharge-tier-price {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.recharge-tip {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-top: 20px;
+}
+
+/* ==================== 米粒明细 ==================== */
+.rice-summary {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.rice-summary-item {
+  text-align: center;
+}
+
+.rice-summary-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.rice-summary-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.transaction-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.transaction-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.transaction-item:last-child {
+  border-bottom: none;
+}
+
+.transaction-info {
+  flex: 1;
+}
+
+.transaction-desc {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.transaction-time {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.transaction-amount {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.transaction-amount.positive {
+  color: #52c41a;
+}
+
+.transaction-amount.negative {
+  color: var(--text-primary);
+}
+
+/* ==================== 订单列表 ==================== */
+.order-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.order-item {
+  display: flex;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-light);
+  gap: 12px;
+}
+
+.order-item:last-child {
+  border-bottom: none;
+}
+
+.order-info {
+  flex: 1;
+}
+
+.order-no {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  font-family: monospace;
+}
+
+.order-time {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.order-amount {
+  text-align: right;
+}
+
+.order-rice {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 2px;
+}
+
+.order-price {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.order-status {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+}
+
+.order-status.paid {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.order-status.pending {
+  background: #fffbe6;
+  color: #faad14;
+}
+
+.order-status.cancelled {
+  background: #fff1f0;
+  color: #ff4d4f;
+}
+
+/* ==================== 头像上传 ==================== */
+.avatar-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--card-bg-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  font-size: 32px;
+}
+
+/* ==================== 角色详情 ==================== */
+.detail-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--card-bg-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.detail-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-name {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.detail-desc {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.detail-tags {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.detail-info {
+  display: flex;
+  justify-content: space-around;
+  padding: 16px 0;
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 20px;
+}
+
+.detail-info-item {
+  text-align: center;
+}
+
+.detail-info-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: 4px;
+}
+
+.detail-info-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.detail-section {
+  margin-bottom: 16px;
+}
+
+.detail-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.detail-prompt {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  background: var(--card-bg-light);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* ==================== 标签 ==================== */
+.tag {
+  display: inline-block;
+  padding: 4px 10px;
+  background: var(--card-bg-light);
+  color: var(--text-secondary);
+  font-size: 12px;
+  border-radius: var(--radius-full);
+}
+
+/* ==================== 关于页面 ==================== */
+.about-content {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.about-logo {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.about-content h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.about-version {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 20px;
+}
+
+.about-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+  margin-bottom: 24px;
+}
+
+.about-features {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.about-feature {
+  padding: 8px 16px;
+  background: var(--card-bg-light);
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ==================== 确认对话框 ==================== */
+.modal-small .modal-content {
+  max-width: 300px;
+}
+
+.confirm-icon {
+  text-align: center;
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.confirm-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.confirm-message {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+/* ==================== 响应式适配 ==================== */
+@media (min-width: 480px) {
+  #app {
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@media (max-width: 360px) {
+  html, body {
+    font-size: 13px;
+  }
+  
+  .page-title {
+    font-size: 20px;
+  }
+  
+  .login-title {
+    font-size: 24px;
+  }
+  
+  .rice-amount {
+    font-size: 24px;
+  }
+}
