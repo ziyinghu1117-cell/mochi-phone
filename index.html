@@ -866,3 +866,131 @@
   <script src="app.js"></script>
 </body>
 </html>
+
+    <!-- ===== Social Forum Overlay ===== -->
+    <!-- ===== Social Forum Overlay (完整功能版) ===== -->
+    <div id="socialForumOverlay" class="sf-overlay" style="display:none">
+      <div class="sf-nav-bar">
+        <button class="sf-nav-avatar" id="sfNavAvatar" type="button" onclick="sfOpenSideMenu()"></button>
+        <div class="sf-nav-title">论坛</div>
+        <div class="sf-nav-actions">
+          <button class="sf-nav-btn" id="sfRefreshBtn" type="button" onclick="sfRefreshFeed()">⟳</button>
+          <button class="sf-nav-btn" id="sfCloseBtn" type="button" onclick="closeForumOverlay()">✕</button>
+        </div>
+      </div>
+      <div class="sf-content" id="sfContent">
+        <!-- 首页 -->
+        <div class="sf-view active" id="sfHomeView">
+          <div class="sf-sub-tabs">
+            <div class="sf-sub-tab active" data-sf-tab="following">关注</div>
+            <div class="sf-sub-tab" data-sf-tab="recommended">推荐</div>
+            <div class="sf-sub-tab" data-sf-tab="gossip">八卦</div>
+          </div>
+          <div class="sf-timeline" id="sfTimeline"><div class="sf-loading">加载中...</div></div>
+        </div>
+        <!-- 搜索/热搜 -->
+        <div class="sf-view" id="sfSearchView">
+          <div class="sf-search-bar"><input type="text" id="sfSearchInput" placeholder="搜索话题、用户..." /></div>
+          <div class="sf-trends" id="sfTrends"></div>
+        </div>
+        <!-- 通知 -->
+        <div class="sf-view" id="sfNotifView">
+          <div class="sf-timeline" id="sfNotifList"><div class="sf-loading">暂无通知</div></div>
+        </div>
+        <!-- 我的 -->
+        <div class="sf-view" id="sfMeView">
+          <div class="sf-profile-header"></div>
+          <div class="sf-profile-body" id="sfProfileBody"></div>
+        </div>
+      </div>
+      <button class="sf-fab" id="sfFab" type="button" onclick="sfOpenPostModal()">+</button>
+      <div class="sf-bottom-nav">
+        <div class="sf-tab active" data-sf-view="home">🏠<span>首页</span></div>
+        <div class="sf-tab" data-sf-view="search">🔍<span>发现</span></div>
+        <div class="sf-tab" data-sf-view="notifications">🔔<span>通知</span></div>
+        <div class="sf-tab" data-sf-view="me">👤<span>我的</span></div>
+      </div>
+    </div>
+    
+    <!-- 侧边栏 -->
+    <div id="sfSideMenu" class="sf-side-menu">
+      <div class="sf-menu-header" id="sfMenuHeader"></div>
+      <div class="sf-menu-list" id="sfMenuList"></div>
+    </div>
+    <div id="sfSideOverlay" class="sf-side-overlay" onclick="sfCloseSideMenu()"></div>
+    
+    <!-- 发帖弹窗 -->
+    <div id="sfPostModal" class="sf-post-modal">
+      <div class="sf-post-modal-content">
+        <div class="sf-post-modal-header">
+          <span>发帖子</span>
+          <button class="sf-post-close" onclick="sfClosePostModal()">✕</button>
+        </div>
+        <textarea id="sfPostInput" placeholder="有什么新鲜事？"></textarea>
+        <div class="sf-post-modal-actions">
+          <button class="sf-btn cancel" id="sfPostCancel" type="button" onclick="sfClosePostModal()">取消</button>
+          <button class="sf-btn publish" id="sfPostPublish" type="button" onclick="sfPublishPost()">发布</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 角色选择器 -->
+    <div id="sfRolePickerOverlay" class="sf-role-picker-overlay">
+      <div class="sf-role-picker-content">
+        <div class="sf-role-picker-header">
+          <span>选择角色</span>
+          <button class="sf-post-close" onclick="sfCloseRolePicker()">✕</button>
+        </div>
+        <div class="sf-role-picker-list" id="sfRolePickerList"></div>
+      </div>
+    </div>
+    
+    <!-- 帖子详情 -->
+    <div id="sfDetailOverlay" class="sf-detail-overlay" style="display:none">
+      <div class="sf-detail-header">
+        <button class="sf-nav-btn" id="sfDetailBack" type="button" onclick="closeForumDetail()">←</button>
+        <span>帖子详情</span>
+        <div style="width:36px"></div>
+      </div>
+      <div class="sf-detail-body" id="sfDetailBody"></div>
+      <div class="sf-comment-bar">
+        <input id="sfCommentInput" placeholder="写条评论..." />
+        <button id="sfCommentSend" type="button" onclick="sfSubmitComment()">发送</button>
+      </div>
+    </div>
+    <!-- ===== Doujin Forum Overlay ===== -->
+    <div id="doujinForumOverlay" class="df-overlay" style="display:none">
+      <div class="df-nav-bar">
+        <button class="df-nav-back" type="button" onclick="closeFanficOverlay()">←</button>
+        <div class="df-nav-title">同人文</div>
+        <button class="df-nav-btn" type="button" onclick="openFanficShelf()">📚</button>
+      </div>
+      <div class="df-content" id="dfContent">
+        <div class="df-view active" id="dfHomeView">
+          <div class="df-tags">
+            <div class="df-tag active" data-df-tag="all">全部</div>
+            <div class="df-tag" data-df-tag="danmei">耽美</div>
+            <div class="df-tag" data-df-tag="yanqing">言情</div>
+            <div class="df-tag" data-df-tag="xuanhuan">玄幻</div>
+            <div class="df-tag" data-df-tag="xiaoyuan">校园</div>
+            <div class="df-tag" data-df-tag="dushi">都市</div>
+          </div>
+          <div class="df-grid" id="dfWorksGrid">
+            <div class="df-loading">加载中...</div>
+          </div>
+        </div>
+      </div>
+      <button class="df-fab" id="dfFab" type="button">✨</button>
+      <div class="df-bottom-nav">
+        <div class="df-tab active" data-df-view="home">🏠<span>广场</span></div>
+        <div class="df-tab" data-df-view="shelf">📚<span>书架</span></div>
+      </div>
+    </div>
+    <div id="dfDetailOverlay" class="df-detail-overlay" style="display:none">
+      <div class="df-detail-header">
+        <button class="df-nav-btn" type="button" onclick="closeFanficDetail()">←</button>
+        <span>作品详情</span>
+        <button class="df-nav-btn" type="button">⭐</button>
+      </div>
+      <div class="df-detail-body" id="dfDetailBody"></div>
+    </div>

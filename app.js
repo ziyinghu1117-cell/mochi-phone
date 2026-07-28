@@ -2640,9 +2640,9 @@ function openApp(appName) {
     overlay.classList.remove('active');
     
     if (appName === 'forum') {
-      openForum();
+      openForumOverlay();
     } else if (appName === 'fanfic') {
-      openFanfic();
+      openFanficOverlay();
     } else {
       switchPage(appName);
     }
@@ -2747,4 +2747,1857 @@ window.onerror = function(message, source, lineno, colno, error) {
 
 window.onunhandledrejection = function(event) {
   console.error('Unhandled promise rejection:', event.reason);
+};
+
+// ==================== 论坛系统（参考sfState重写） ====================
+const sfState = {
+  active: false,
+  currentTab: 'recommended',
+  posts: { following: [], recommended: [], gossip: [] },
+  currentView: 'home',
+  commentsCache: {},
+  currentPostId: null,
+  loading: { following: false, recommended: false, gossip: false },
+  likedPosts: [],
+  savedPosts: []
+};
+
+// 渐变背景配色
+const SF_GRADIENTS = [
+  'linear-gradient(135deg, #FFB6C1, #FF69B4)',
+  'linear-gradient(135deg, #DDA0DD, #BA55D3)',
+  'linear-gradient(135deg, #87CEEB, #4682B4)',
+  'linear-gradient(135deg, #98FB98, #3CB371)',
+  'linear-gradient(135deg, #F0E68C, #DAA520)',
+  'linear-gradient(135deg, #FFA07A, #FF6347)',
+  'linear-gradient(135deg, #E6E6FA, #9370DB)',
+  'linear-gradient(135deg, #AFEEEE, #48D1CC)'
+];
+
+// 打开论坛
+function openForumOverlay() {
+  try {
+    sfState.active = true;
+    document.getElementById('socialForumOverlay').style.display = 'flex';
+    
+    // 初始化帖子
+    if (sfState.posts.recommended.length === 0) {
+      sfGenerateSamplePosts('recommended');
+    }
+    
+    sfRenderFeed();
+    sfBindEvents();
+  } catch (err) {
+    console.error('openForumOverlay error:', err);
+    showToast('论坛加载失败');
+  }
+}
+
+// 关闭论坛
+function closeForumOverlay() {
+  try {
+    sfState.active = false;
+    document.getElementById('socialForumOverlay').style.display = 'none';
+  } catch (err) {
+    console.error('closeForumOverlay error:', err);
+  }
+}
+
+// 绑定事件
+let sfEventsBound = false;
+function sfBindEvents() {
+  if (sfEventsBound) return;
+  
+  try {
+    // Tab切换
+    document.querySelectorAll('.sf-sub-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.sfTab;
+        sfSwitchTab(tabName);
+      });
+    });
+    
+    // 底部导航
+    document.querySelectorAll('.sf-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const view = tab.dataset.sfView;
+        sfSwitchView(view);
+      });
+    });
+    
+    // FAB按钮
+    const fab = document.getElementById('sfFab');
+    if (fab) {
+      fab.addEventListener('click', () => {
+        showToast('发布功能开发中');
+      });
+    }
+    
+    // 刷新按钮
+    const refreshBtn = document.getElementById('sfRefreshBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        sfRefreshFeed();
+      });
+    }
+    
+    // 评论发送
+    const commentSend = document.getElementById('sfCommentSend');
+    if (commentSend) {
+      commentSend.addEventListener('click', sfSubmitComment);
+    }
+    
+    sfEventsBound = true;
+  } catch (err) {
+    console.error('sfBindEvents error:', err);
+  }
+}
+
+// 切换Tab
+function sfSwitchTab(tab) {
+  try {
+    sfState.currentTab = tab;
+    
+    // 更新tab样式
+    document.querySelectorAll('.sf-sub-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.sfTab === tab);
+    });
+    
+    // 如果该tab没有帖子，生成一些
+    if (sfState.posts[tab].length === 0) {
+      sfGenerateSamplePosts(tab);
+    }
+    
+    sfRenderFeed();
+  } catch (err) {
+    console.error('sfSwitchTab error:', err);
+  }
+}
+
+// 切换视图
+function sfSwitchView(view) {
+  try {
+    sfState.currentView = view;
+    
+    // 更新底部导航
+    document.querySelectorAll('.sf-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.sfView === view);
+    });
+    
+    // 更新view显示
+    document.querySelectorAll('.sf-view').forEach(v => {
+      v.classList.remove('active');
+    });
+    
+    const viewMap = {
+      'home': 'sfHomeView',
+      'me': 'sfMeView'
+    };
+    
+    const targetView = document.getElementById(viewMap[view]);
+    if (targetView) {
+      targetView.classList.add('active');
+    }
+    
+    if (view === 'me') {
+      sfRenderProfile();
+    }
+  } catch (err) {
+    console.error('sfSwitchView error:', err);
+  }
+}
+
+// 生成示例帖子
+function sfGenerateSamplePosts(tab) {
+  const templates = {
+    following: [
+      { authorName: '月光下的猫', authorTag: '认证作者', content: '今天天气不错，心情也很好☀️', hasImage: true },
+      { authorName: '星河滚烫', authorTag: '优质作者', content: '刚读完一本书，感触挺深的。', hasImage: true },
+      { authorName: '云朵邮局', authorTag: '萌新', content: '下班路上的晚霞太美了。', hasImage: false }
+    ],
+    recommended: [
+      { authorName: '人间清醒', authorTag: '情感博主', content: '今天想认真记录一下最近的心境变化。这段时间经历了很多，有起有落，但回头看看，每一段经历都让我成长了不少。\n\n以前总觉得时间还很长，很多事情可以慢慢来。但现在越来越意识到，当下的每一刻都是独一无二的。', hasImage: true },
+      { authorName: '落日余晖', authorTag: '生活博主', content: '终于把拖延了很久的事情做完了，爽！💪', hasImage: false },
+      { authorName: '海盐焦糖', authorTag: '美食博主', content: '今天的天空也太好看了吧，随手拍都是壁纸级别的☁️', hasImage: true },
+      { authorName: '月亮邮递员', authorTag: '治愈系', content: '深夜了，睡不着，来碎碎念一下。', hasImage: false },
+      { authorName: '三餐四季', authorTag: '日常', content: '今天遇到一件有趣的事，忍不住想分享。', hasImage: true }
+    ],
+    gossip: [
+      { authorName: '吃瓜群众', authorTag: '八卦达人', content: '听说最近有个大瓜，有人知道吗？', hasImage: false },
+      { authorName: '匿名用户', authorTag: '匿名', content: '今天看到一件很无语的事...', hasImage: false },
+      { authorName: '福尔摩斯', authorTag: '侦探', content: '根据我的推理，事情应该是这样的...', hasImage: true }
+    ]
+  };
+  
+  const posts = templates[tab] || templates.recommended;
+  sfState.posts[tab] = posts.map((p, i) => ({
+    id: Date.now() + i,
+    authorName: p.authorName,
+    authorTag: p.authorTag,
+    content: p.content,
+    hasImage: p.hasImage,
+    imageIndex: Math.floor(Math.random() * 8),
+    likes: Math.floor(Math.random() * 1000),
+    comments: Math.floor(Math.random() * 100),
+    reposts: Math.floor(Math.random() * 50),
+    views: Math.floor(Math.random() * 10000),
+    time: sfFormatTime(Date.now() - Math.random() * 86400000),
+    liked: false,
+    saved: false,
+    verified: i === 0
+  }));
+}
+
+// 渲染帖子流
+function sfRenderFeed() {
+  try {
+    const timeline = document.getElementById('sfTimeline');
+    const tab = sfState.currentTab;
+    const posts = sfState.posts[tab] || [];
+    
+    if (posts.length === 0) {
+      timeline.innerHTML = `
+        <div class="sf-empty">
+          <div class="icon">📝</div>
+          <div class="text">还没有帖子</div>
+          <button class="sf-generate-btn" onclick="sfRefreshFeed()">
+            ✨ 生成更多
+          </button>
+        </div>
+      `;
+      return;
+    }
+    
+    timeline.innerHTML = posts.map(post => sfRenderPostCard(post)).join('');
+    
+    // 绑定点击事件
+    timeline.querySelectorAll('.sf-post').forEach(postEl => {
+      const postId = parseInt(postEl.dataset.postId);
+      
+      postEl.addEventListener('click', () => {
+        sfOpenPostDetail(postId);
+      });
+      
+      postEl.querySelectorAll('[data-action]').forEach(actionEl => {
+        actionEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const action = actionEl.dataset.action;
+          sfHandlePostAction(postId, action);
+        });
+      });
+    });
+  } catch (err) {
+    console.error('sfRenderFeed error:', err);
+  }
+}
+
+// 渲染帖子卡片
+function sfRenderPostCard(post) {
+  const imageGrad = post.hasImage ? SF_GRADIENTS[post.imageIndex % 8] : '';
+  const likedClass = post.liked ? ' liked' : '';
+  const savedClass = post.saved ? ' saved' : '';
+  const verifiedHtml = post.verified ? '<span class="sf-post-verified">✓</span>' : '';
+  
+  let html = `<div class="sf-post" data-post-id="${post.id}">`;
+  html += `<div class="sf-post-header">`;
+  html += `<div class="sf-post-avatar" style="background: ${SF_GRADIENTS[(post.id % 8)]}">${post.authorName?.[0] || '?'}</div>`;
+  html += `<div class="sf-post-meta">`;
+  html += `<span class="sf-post-name">${post.authorName || '匿名'}${verifiedHtml}</span>`;
+  html += `<span class="sf-post-handle">${post.authorTag || '普通用户'}</span>`;
+  html += `</div>`;
+  html += `<span class="sf-post-time">${post.time || '刚刚'}</span>`;
+  html += `</div>`;
+  
+  if (post.hasImage) {
+    html += `<div class="sf-post-image" style="background: ${imageGrad}"></div>`;
+  }
+  
+  html += `<div class="sf-post-content">${post.content || ''}</div>`;
+  html += `<div class="sf-post-actions">`;
+  html += `<span class="sf-post-action" data-action="comment">💬 ${post.comments || 0}</span>`;
+  html += `<span class="sf-post-action" data-action="repost">🔄 ${post.reposts || 0}</span>`;
+  html += `<span class="sf-post-action${likedClass}" data-action="like">❤️ ${post.likes || 0}</span>`;
+  html += `<span class="sf-post-action${savedClass}" data-action="save">⭐ ${post.saves || 0}</span>`;
+  html += `</div>`;
+  html += `</div>`;
+  
+  return html;
+}
+
+// 处理帖子操作
+function sfHandlePostAction(postId, action) {
+  try {
+    const tab = sfState.currentTab;
+    const post = sfState.posts[tab].find(p => p.id === postId);
+    if (!post) return;
+    
+    switch (action) {
+      case 'like':
+        post.liked = !post.liked;
+        post.likes += post.liked ? 1 : -1;
+        break;
+      case 'save':
+        post.saved = !post.saved;
+        post.saves = (post.saves || 0) + (post.saved ? 1 : -1);
+        break;
+      case 'comment':
+        sfOpenPostDetail(postId);
+        return;
+    }
+    
+    sfRenderFeed();
+  } catch (err) {
+    console.error('sfHandlePostAction error:', err);
+  }
+}
+
+// 刷新帖子
+function sfRefreshFeed() {
+  try {
+    showToast('生成中...');
+    setTimeout(() => {
+      const tab = sfState.currentTab;
+      sfGenerateSamplePosts(tab);
+      sfRenderFeed();
+      showToast('生成成功');
+    }, 500);
+  } catch (err) {
+    console.error('sfRefreshFeed error:', err);
+    showToast('生成失败');
+  }
+}
+
+// 打开帖子详情
+function sfOpenPostDetail(postId) {
+  try {
+    const tab = sfState.currentTab;
+    const post = sfState.posts[tab].find(p => p.id === postId);
+    if (!post) return;
+    
+    sfState.currentPostId = postId;
+    
+    const overlay = document.getElementById('sfDetailOverlay');
+    const body = document.getElementById('sfDetailBody');
+    
+    const imageGrad = post.hasImage ? SF_GRADIENTS[post.imageIndex % 8] : '';
+    const verifiedHtml = post.verified ? '<span class="sf-post-verified">✓</span>' : '';
+    const commentCount = (sfState.commentsCache[postId] || []).length;
+    
+    let html = `<div class="sf-post" style="border:0;cursor:default">`;
+    html += `<div class="sf-post-header">`;
+    html += `<div class="sf-post-avatar" style="background: ${SF_GRADIENTS[(post.id % 8)]}">${post.authorName?.[0] || '?'}</div>`;
+    html += `<div class="sf-post-meta">`;
+    html += `<span class="sf-post-name">${post.authorName || '匿名'}${verifiedHtml}</span>`;
+    html += `<span class="sf-post-handle">${post.authorTag || '普通用户'}</span>`;
+    html += `</div>`;
+    html += `<span class="sf-post-time">${post.time || '刚刚'}</span>`;
+    html += `</div>`;
+    
+    if (post.hasImage) {
+      html += `<div class="sf-post-image" style="background: ${imageGrad}"></div>`;
+    }
+    
+    html += `<div class="sf-post-content">${post.content || ''}</div>`;
+    html += `<div class="sf-post-actions">`;
+    html += `<span class="sf-post-action" onclick="sfHandlePostAction(${post.id}, 'comment')">💬 ${commentCount}</span>`;
+    html += `<span class="sf-post-action" onclick="sfHandlePostAction(${post.id}, 'repost')">🔄 ${post.reposts || 0}</span>`;
+    html += `<span class="sf-post-action ${post.liked ? 'liked' : ''}" onclick="sfHandlePostAction(${post.id}, 'like')">❤️ ${post.likes || 0}</span>`;
+    html += `<span class="sf-post-action ${post.saved ? 'saved' : ''}" onclick="sfHandlePostAction(${post.id}, 'save')">⭐ ${post.saves || 0}</span>`;
+    html += `</div>`;
+    html += `</div>`;
+    
+    // 评论区
+    html += `<div style="padding:14px 0 4px;color:#999;font-size:13px;font-weight:700">评论</div>`;
+    html += `<div id="sfDetailComments">`;
+    
+    const comments = sfState.commentsCache[postId] || [];
+    if (comments.length === 0) {
+      html += `<div style="text-align:center;padding:20px">
+        <div style="color:#999;font-size:13px;margin-bottom:12px">还没有评论</div>
+        <button class="sf-generate-btn" onclick="sfGenerateComments(${post.id})">✨ 生成评论</button>
+      </div>`;
+    } else {
+      html += comments.map(c => `
+        <div class="sf-comment">
+          <div class="sf-comment-avatar" style="background: ${SF_GRADIENTS[(c.id % 8)]}">${c.name?.[0] || '?'}</div>
+          <div class="sf-comment-content">
+            <div class="sf-comment-name">${c.name}</div>
+            <div class="sf-comment-text">${c.content}</div>
+            <div class="sf-comment-time">${c.time}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    html += `</div>`;
+    
+    body.innerHTML = html;
+    overlay.style.display = 'flex';
+  } catch (err) {
+    console.error('sfOpenPostDetail error:', err);
+    showToast('打开详情失败');
+  }
+}
+
+// 关闭帖子详情
+function closeForumDetail() {
+  try {
+    document.getElementById('sfDetailOverlay').style.display = 'none';
+    sfState.currentPostId = null;
+    sfRenderFeed(); // 刷新列表
+  } catch (err) {
+    console.error('closeForumDetail error:', err);
+  }
+}
+
+// 生成评论
+function sfGenerateComments(postId) {
+  try {
+    const commentTemplates = [
+      { name: '小红', content: '说得太好了！' },
+      { name: '小明', content: '深有同感' },
+      { name: '阿花', content: '太治愈了🥹' },
+      { name: '路人甲', content: '关注了关注了' },
+      { name: '小透明', content: '第一！' }
+    ];
+    
+    sfState.commentsCache[postId] = commentTemplates.map((c, i) => ({
+      id: Date.now() + i,
+      name: c.name,
+      content: c.content,
+      time: sfFormatTime(Date.now() - Math.random() * 3600000)
+    }));
+    
+    sfOpenPostDetail(postId); // 刷新详情
+    showToast('评论生成成功');
+  } catch (err) {
+    console.error('sfGenerateComments error:', err);
+    showToast('生成失败');
+  }
+}
+
+// 提交评论
+function sfSubmitComment() {
+  try {
+    const input = document.getElementById('sfCommentInput');
+    const content = input.value.trim();
+    if (!content) {
+      showToast('请输入评论内容');
+      return;
+    }
+    
+    const postId = sfState.currentPostId;
+    if (!postId) return;
+    
+    if (!sfState.commentsCache[postId]) {
+      sfState.commentsCache[postId] = [];
+    }
+    
+    sfState.commentsCache[postId].unshift({
+      id: Date.now(),
+      name: AppState.user?.nickname || '我',
+      content: content,
+      time: '刚刚'
+    });
+    
+    input.value = '';
+    sfOpenPostDetail(postId); // 刷新详情
+    showToast('评论成功');
+  } catch (err) {
+    console.error('sfSubmitComment error:', err);
+    showToast('评论失败');
+  }
+}
+
+// 渲染个人主页
+function sfRenderProfile() {
+  try {
+    const body = document.getElementById('sfProfileBody');
+    if (!body) return;
+    
+    body.innerHTML = `
+      <div style="padding: 20px; text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 12px;">👤</div>
+        <div style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">${AppState.user?.nickname || '用户'}</div>
+        <div style="font-size: 13px; color: #999; margin-bottom: 20px;">个人主页功能开发中</div>
+      </div>
+    `;
+  } catch (err) {
+    console.error('sfRenderProfile error:', err);
+  }
+}
+
+// 格式化时间
+function sfFormatTime(timestamp) {
+  const diff = Date.now() - timestamp;
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+  return Math.floor(diff / 86400000) + '天前';
+}
+
+// ==================== 同人文系统（参考dfState重写） ====================
+const dfState = {
+  active: false,
+  currentTag: 'all',
+  works: [],
+  currentView: 'home',
+  currentWorkId: null,
+  shelf: [],
+  loading: false
+};
+
+// 同人文渐变配色
+const DF_GRADIENTS = [
+  'linear-gradient(135deg, #FFB6C1, #FF69B4)',
+  'linear-gradient(135deg, #DDA0DD, #BA55D3)',
+  'linear-gradient(135deg, #87CEEB, #4682B4)',
+  'linear-gradient(135deg, #98FB98, #3CB371)',
+  'linear-gradient(135deg, #F0E68C, #DAA520)',
+  'linear-gradient(135deg, #FFA07A, #FF6347)',
+  'linear-gradient(135deg, #E6E6FA, #9370DB)',
+  'linear-gradient(135deg, #AFEEEE, #48D1CC)'
+];
+
+// 打开同人文
+function openFanficOverlay() {
+  try {
+    dfState.active = true;
+    document.getElementById('doujinForumOverlay').style.display = 'flex';
+    
+    // 初始化作品
+    if (dfState.works.length === 0) {
+      dfGenerateSampleWorks();
+    }
+    
+    dfRenderWorks();
+    dfBindEvents();
+  } catch (err) {
+    console.error('openFanficOverlay error:', err);
+    showToast('同人文加载失败');
+  }
+}
+
+// 关闭同人文
+function closeFanficOverlay() {
+  try {
+    dfState.active = false;
+    document.getElementById('doujinForumOverlay').style.display = 'none';
+  } catch (err) {
+    console.error('closeFanficOverlay error:', err);
+  }
+}
+
+// 绑定事件
+let dfEventsBound = false;
+function dfBindEvents() {
+  if (dfEventsBound) return;
+  
+  try {
+    // 标签切换
+    document.querySelectorAll('.df-tag').forEach(tag => {
+      tag.addEventListener('click', () => {
+        const tagName = tag.dataset.dfTag;
+        dfSwitchTag(tagName);
+      });
+    });
+    
+    // 底部导航
+    document.querySelectorAll('.df-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const view = tab.dataset.dfView;
+        dfSwitchView(view);
+      });
+    });
+    
+    // FAB按钮
+    const fab = document.getElementById('dfFab');
+    if (fab) {
+      fab.addEventListener('click', () => {
+        showToast('生成功能开发中');
+      });
+    }
+    
+    dfEventsBound = true;
+  } catch (err) {
+    console.error('dfBindEvents error:', err);
+  }
+}
+
+// 切换标签
+function dfSwitchTag(tag) {
+  try {
+    dfState.currentTag = tag;
+    
+    // 更新标签样式
+    document.querySelectorAll('.df-tag').forEach(t => {
+      t.classList.toggle('active', t.dataset.dfTag === tag);
+    });
+    
+    dfRenderWorks();
+  } catch (err) {
+    console.error('dfSwitchTag error:', err);
+  }
+}
+
+// 切换视图
+function dfSwitchView(view) {
+  try {
+    dfState.currentView = view;
+    
+    // 更新底部导航
+    document.querySelectorAll('.df-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.dfView === view);
+    });
+    
+    // 更新view显示
+    document.querySelectorAll('.df-view').forEach(v => {
+      v.classList.remove('active');
+    });
+    
+    const viewMap = {
+      'home': 'dfHomeView',
+      'shelf': 'dfShelfView'
+    };
+    
+    // 简单处理：广场和书架都用同一个grid
+    dfRenderWorks();
+  } catch (err) {
+    console.error('dfSwitchView error:', err);
+  }
+}
+
+// 生成示例作品
+function dfGenerateSampleWorks() {
+  const works = [
+    { title: '月光下的告白', author: '星辰', tags: ['校园', '甜文'], icon: '🌙', desc: '一个关于青春和暗恋的故事' },
+    { title: '总裁的替身新娘', author: '月下', tags: ['都市', '虐恋'], icon: '💼', desc: '她是他的替身新娘，却在相处中动了心' },
+    { title: '修仙之路', author: '青云', tags: ['玄幻', '升级'], icon: '⚔️', desc: '一个少年的修仙传奇' },
+    { title: '重生之影后', author: '流光', tags: ['重生', '娱乐圈'], icon: '🎬', desc: '重生归来，夺回属于自己的一切' },
+    { title: '穿越之庶女有毒', author: '锦瑟', tags: ['穿越', '宅斗'], icon: '🏯', desc: '庶女重生，步步为营' },
+    { title: '同桌的你', author: '暖阳', tags: ['校园', '纯爱'], icon: '📚', desc: '那些年，我们一起走过的青春' }
+  ];
+  
+  dfState.works = works.map((w, i) => ({
+    id: Date.now() + i,
+    title: w.title,
+    author: w.author,
+    tags: w.tags,
+    icon: w.icon,
+    desc: w.desc,
+    gradientIndex: i % 8,
+    words: Math.floor(Math.random() * 50000) + 10000,
+    content: '这是一个精彩的故事...\n\n第一章 初见\n\n阳光透过窗户洒进教室，落在她的发梢上。他转过头，刚好看到她微笑的样子，那一刻，他知道自己完了。\n\n第二章 心动\n\n日子一天天过去，他发现自己越来越在意她。她的一颦一笑，都牵动着他的心。\n\n（未完待续）'
+  }));
+}
+
+// 渲染作品列表
+function dfRenderWorks() {
+  try {
+    const grid = document.getElementById('dfWorksGrid');
+    let works = dfState.works || [];
+    
+    // 标签筛选
+    if (dfState.currentTag !== 'all') {
+      const tagMap = {
+        'danmei': '耽美',
+        'yanqing': '言情',
+        'xuanhuan': '玄幻',
+        'xiaoyuan': '校园',
+        'dushi': '都市'
+      };
+      const tagName = tagMap[dfState.currentTag];
+      if (tagName) {
+        works = works.filter(w => w.tags.includes(tagName));
+      }
+    }
+    
+    if (works.length === 0) {
+      grid.innerHTML = `
+        <div style="text-align:center;padding:60px 20px;grid-column:1/-1">
+          <div style="font-size:48px;margin-bottom:12px">📖</div>
+          <div style="font-size:14px;color:#999;margin-bottom:16px">暂无作品</div>
+          <button class="sf-generate-btn" onclick="dfRefreshWorks()">✨ 生成更多</button>
+        </div>
+      `;
+      return;
+    }
+    
+    grid.innerHTML = works.map(work => `
+      <div class="df-work-card" data-work-id="${work.id}" onclick="dfOpenWorkDetail(${work.id})">
+        <div class="df-work-cover" style="background: ${DF_GRADIENTS[work.gradientIndex]}">${work.icon}</div>
+        <div class="df-work-info">
+          <div class="df-work-title">${work.title}</div>
+          <div class="df-work-author">${work.author}</div>
+          <div class="df-work-tags">
+            ${work.tags.slice(0, 2).map(t => `<span class="df-work-tag">${t}</span>`).join('')}
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('dfRenderWorks error:', err);
+  }
+}
+
+// 刷新作品
+function dfRefreshWorks() {
+  try {
+    showToast('生成中...');
+    setTimeout(() => {
+      dfGenerateSampleWorks();
+      dfRenderWorks();
+      showToast('生成成功');
+    }, 500);
+  } catch (err) {
+    console.error('dfRefreshWorks error:', err);
+    showToast('生成失败');
+  }
+}
+
+// 打开作品详情
+function dfOpenWorkDetail(workId) {
+  try {
+    const work = dfState.works.find(w => w.id === workId);
+    if (!work) return;
+    
+    dfState.currentWorkId = workId;
+    
+    const overlay = document.getElementById('dfDetailOverlay');
+    const body = document.getElementById('dfDetailBody');
+    
+    body.innerHTML = `
+      <div class="df-detail-cover" style="background: ${DF_GRADIENTS[work.gradientIndex]}">${work.icon}</div>
+      <div class="df-detail-title">${work.title}</div>
+      <div class="df-detail-author">作者：${work.author} · ${Math.floor(work.words / 1000)}千字</div>
+      <div class="df-detail-tags">
+        ${work.tags.map(t => `<span class="df-detail-tag">${t}</span>`).join('')}
+      </div>
+      <div class="df-detail-desc">${work.desc}</div>
+      <div class="df-detail-content">${work.content}</div>
+    `;
+    
+    overlay.style.display = 'flex';
+  } catch (err) {
+    console.error('dfOpenWorkDetail error:', err);
+    showToast('打开详情失败');
+  }
+}
+
+// 关闭作品详情
+function closeFanficDetail() {
+  try {
+    document.getElementById('dfDetailOverlay').style.display = 'none';
+    dfState.currentWorkId = null;
+  } catch (err) {
+    console.error('closeFanficDetail error:', err);
+  }
+}
+
+// 打开书架
+function openFanficShelf() {
+  try {
+    dfSwitchView('shelf');
+    showToast('书架功能开发中');
+  } catch (err) {
+    console.error('openFanficShelf error:', err);
+  }
+}
+
+// ==================== 论坛完整功能扩展 ====================
+
+// 扩展sfState
+sfState.sideMenuOpen = false;
+sfState.userProfile = { 
+  name: '我', 
+  tag: '萌新用户', 
+  bio: '这个人很懒，什么都没写',
+  posts: 0, 
+  followers: 0, 
+  following: 0, 
+  likes: 0 
+};
+sfState.profileTab = 'posts';
+sfState.followedRoles = [];
+sfState.hotTopics = [
+  { topic: '今日份心情', count: 12345, hot: true },
+  { topic: '深夜emo', count: 8976, hot: true },
+  { topic: '日常分享', count: 6543, hot: true },
+  { topic: '读书打卡', count: 4321 },
+  { topic: '美食推荐', count: 3210 },
+  { topic: '追剧日常', count: 2109 },
+  { topic: '健身打卡', count: 1890 },
+  { topic: '旅行日记', count: 1567 }
+];
+sfState.userPosts = [];
+sfState.savedPosts = [];
+
+// 打开侧边栏
+function sfOpenSideMenu() {
+  try {
+    sfState.sideMenuOpen = true;
+    document.getElementById('sfSideMenu').classList.add('open');
+    document.getElementById('sfSideOverlay').classList.add('active');
+    sfRenderSideMenu();
+  } catch (err) {
+    console.error('sfOpenSideMenu error:', err);
+  }
+}
+
+// 关闭侧边栏
+function sfCloseSideMenu() {
+  try {
+    sfState.sideMenuOpen = false;
+    document.getElementById('sfSideMenu').classList.remove('open');
+    document.getElementById('sfSideOverlay').classList.remove('active');
+  } catch (err) {
+    console.error('sfCloseSideMenu error:', err);
+  }
+}
+
+// 渲染侧边栏
+function sfRenderSideMenu() {
+  try {
+    const header = document.getElementById('sfMenuHeader');
+    const list = document.getElementById('sfMenuList');
+    const user = sfState.userProfile;
+    
+    header.innerHTML = `
+      <div class="sf-menu-user">
+        <div class="sf-menu-avatar">${user.name?.[0] || '?'}</div>
+        <div>
+          <div class="sf-menu-name">${user.name}</div>
+          <div class="sf-menu-tag">${user.tag}</div>
+        </div>
+      </div>
+      <div class="sf-menu-stats">
+        <div class="sf-menu-stat">
+          <div class="num">${user.posts}</div>
+          <div class="label">帖子</div>
+        </div>
+        <div class="sf-menu-stat">
+          <div class="num">${user.followers}</div>
+          <div class="label">粉丝</div>
+        </div>
+        <div class="sf-menu-stat">
+          <div class="num">${user.following}</div>
+          <div class="label">关注</div>
+        </div>
+      </div>
+    `;
+    
+    const menuItems = [
+      { icon: '👤', label: '我的主页', action: () => { sfCloseSideMenu(); sfSwitchView('me'); } },
+      { icon: '⭐', label: '我的收藏', action: () => { sfCloseSideMenu(); sfSwitchView('me'); sfState.profileTab = 'saved'; sfRenderProfile(); } },
+      { icon: '❤️', label: '我的关注', action: () => { sfCloseSideMenu(); sfSwitchView('me'); sfState.profileTab = 'following'; sfRenderProfile(); } },
+      { icon: '🔥', label: '热搜榜', action: () => { sfCloseSideMenu(); sfSwitchView('search'); sfRenderTrends(); } },
+      { icon: '🏷️', label: '修改身份标签', action: () => { sfCloseSideMenu(); sfEditTag(); } },
+      { icon: '⚙️', label: '设置', action: () => { sfCloseSideMenu(); showToast('设置功能开发中'); } }
+    ];
+    
+    list.innerHTML = menuItems.map(item => `
+      <div class="sf-menu-item" onclick="sfMenuItemClick('${item.label}')">
+        <span class="icon">${item.icon}</span>
+        <span>${item.label}</span>
+      </div>
+    `).join('');
+    
+    // 绑定事件
+    list.querySelectorAll('.sf-menu-item').forEach((el, i) => {
+      el.addEventListener('click', menuItems[i].action);
+    });
+  } catch (err) {
+    console.error('sfRenderSideMenu error:', err);
+  }
+}
+
+function sfMenuItemClick(label) {
+  // 占位，实际逻辑在上面绑定
+}
+
+// 渲染热搜
+function sfRenderTrends() {
+  try {
+    const trends = document.getElementById('sfTrends');
+    if (!trends) return;
+    
+    trends.innerHTML = `
+      <div class="sf-trends-title">🔥 热搜榜</div>
+      ${sfState.hotTopics.map((topic, i) => `
+        <div class="sf-trend-item" onclick="sfSearchTopic('${topic.topic}')">
+          <div class="sf-trend-rank ${i < 3 ? 'hot' : 'normal'}">${i + 1}</div>
+          <div class="sf-trend-content">
+            <div class="sf-trend-topic">#${topic.topic}#</div>
+            <div class="sf-trend-count">${sfFormatNum(topic.count)} 讨论</div>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  } catch (err) {
+    console.error('sfRenderTrends error:', err);
+  }
+}
+
+function sfSearchTopic(topic) {
+  showToast('搜索话题: ' + topic);
+}
+
+// 格式化数字
+function sfFormatNum(n) {
+  if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return n.toString();
+}
+
+// 打开发帖弹窗
+function sfOpenPostModal() {
+  try {
+    document.getElementById('sfPostModal').classList.add('active');
+    document.getElementById('sfPostInput').value = '';
+    document.getElementById('sfPostInput').focus();
+  } catch (err) {
+    console.error('sfOpenPostModal error:', err);
+  }
+}
+
+// 关闭发帖弹窗
+function sfClosePostModal() {
+  try {
+    document.getElementById('sfPostModal').classList.remove('active');
+  } catch (err) {
+    console.error('sfClosePostModal error:', err);
+  }
+}
+
+// 发布帖子
+function sfPublishPost() {
+  try {
+    const content = document.getElementById('sfPostInput').value.trim();
+    if (!content) {
+      showToast('请输入内容');
+      return;
+    }
+    
+    const tab = sfState.currentTab;
+    const newPost = {
+      id: Date.now(),
+      authorName: sfState.userProfile.name,
+      authorTag: sfState.userProfile.tag,
+      content: content,
+      hasImage: false,
+      imageIndex: 0,
+      likes: 0,
+      comments: 0,
+      reposts: 0,
+      saves: 0,
+      views: 0,
+      time: '刚刚',
+      liked: false,
+      saved: false,
+      verified: false,
+      isMine: true
+    };
+    
+    sfState.posts[tab].unshift(newPost);
+    sfState.userProfile.posts++;
+    sfState.userPosts.unshift(newPost);
+    
+    sfClosePostModal();
+    sfRenderFeed();
+    showToast('发布成功');
+  } catch (err) {
+    console.error('sfPublishPost error:', err);
+    showToast('发布失败');
+  }
+}
+
+// 打开角色选择器
+function sfOpenRolePicker() {
+  try {
+    const overlay = document.getElementById('sfRolePickerOverlay');
+    const list = document.getElementById('sfRolePickerList');
+    
+    const roles = [
+      { id: 1, name: '月光下的猫', desc: '温柔治愈系' },
+      { id: 2, name: '星河滚烫', desc: '热血少年' },
+      { id: 3, name: '云朵邮局', desc: '文艺清新' }
+    ];
+    
+    list.innerHTML = roles.map(role => `
+      <div class="sf-role-picker-item" onclick="sfPickRole(${role.id})">
+        <div class="sf-role-picker-avatar">${role.name?.[0] || '?'}</div>
+        <div class="sf-role-picker-info">
+          <div class="sf-role-picker-name">${role.name}</div>
+          <div class="sf-role-picker-desc">${role.desc}</div>
+        </div>
+      </div>
+    `).join('');
+    
+    overlay.classList.add('active');
+  } catch (err) {
+    console.error('sfOpenRolePicker error:', err);
+  }
+}
+
+function sfCloseRolePicker() {
+  try {
+    document.getElementById('sfRolePickerOverlay').classList.remove('active');
+  } catch (err) {
+    console.error('sfCloseRolePicker error:', err);
+  }
+}
+
+function sfPickRole(roleId) {
+  sfCloseRolePicker();
+  showToast('已选择角色');
+}
+
+// 修改身份标签
+function sfEditTag() {
+  const newTag = prompt('请输入新的身份标签：', sfState.userProfile.tag);
+  if (newTag !== null && newTag.trim()) {
+    sfState.userProfile.tag = newTag.trim();
+    showToast('标签已修改');
+    sfRenderFeed();
+  }
+}
+
+// 扩展个人主页渲染
+const _sfRenderProfile = sfRenderProfile;
+sfRenderProfile = function() {
+  try {
+    const body = document.getElementById('sfProfileBody');
+    if (!body) return;
+    
+    const header = document.querySelector('#sfMeView .sf-profile-header');
+    if (header) {
+      const user = sfState.userProfile;
+      header.innerHTML = `
+        <div class="sf-profile-card">
+          <div class="sf-profile-top">
+            <div class="sf-profile-avatar-wrap">
+              <div class="sf-profile-avatar">${user.name?.[0] || '?'}</div>
+            </div>
+            <div class="sf-profile-name-row">
+              <span id="sfProfileName">${user.name}</span>
+            </div>
+            <div class="sf-profile-tag" onclick="sfEditTag()">${user.tag}</div>
+            <div class="sf-profile-bio">${user.bio}</div>
+            <div class="sf-profile-stat">
+              <div class="sf-profile-stat-item">
+                <div class="num">${user.posts}</div>
+                <div class="label">帖子</div>
+              </div>
+              <div class="sf-profile-stat-item">
+                <div class="num">${user.followers}</div>
+                <div class="label">粉丝</div>
+              </div>
+              <div class="sf-profile-stat-item">
+                <div class="num">${user.following}</div>
+                <div class="label">关注</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    body.innerHTML = `
+      <div class="sf-profile-tabs">
+        <div class="sf-profile-tab ${sfState.profileTab === 'posts' ? 'active' : ''}" onclick="sfSwitchProfileTab('posts')">我的帖子</div>
+        <div class="sf-profile-tab ${sfState.profileTab === 'saved' ? 'active' : ''}" onclick="sfSwitchProfileTab('saved')">我的收藏</div>
+        <div class="sf-profile-tab ${sfState.profileTab === 'following' ? 'active' : ''}" onclick="sfSwitchProfileTab('following')">我的关注</div>
+      </div>
+      <div id="sfProfileContent"></div>
+    `;
+    
+    const content = document.getElementById('sfProfileContent');
+    let posts = [];
+    
+    if (sfState.profileTab === 'posts') {
+      posts = sfState.userPosts;
+    } else if (sfState.profileTab === 'saved') {
+      posts = sfState.savedPosts;
+    } else {
+      content.innerHTML = `
+        <div class="sf-profile-empty">
+          <div style="font-size:48px;margin-bottom:12px">❤️</div>
+          <div>还没有关注的人</div>
+          <div class="tip">去推荐页看看吧</div>
+        </div>
+      `;
+      return;
+    }
+    
+    if (posts.length === 0) {
+      content.innerHTML = `
+        <div class="sf-profile-empty">
+          <div style="font-size:48px;margin-bottom:12px">📝</div>
+          <div>${sfState.profileTab === 'posts' ? '还没有发布帖子' : '还没有收藏的帖子'}</div>
+        </div>
+      `;
+      return;
+    }
+    
+    content.innerHTML = posts.map(post => sfRenderPostCard(post)).join('');
+    
+    // 绑定点击事件
+    content.querySelectorAll('.sf-post').forEach(postEl => {
+      const postId = parseInt(postEl.dataset.postId);
+      postEl.addEventListener('click', () => {
+        sfOpenPostDetail(postId);
+      });
+    });
+  } catch (err) {
+    console.error('sfRenderProfile error:', err);
+  }
+};
+
+function sfSwitchProfileTab(tab) {
+  try {
+    sfState.profileTab = tab;
+    sfRenderProfile();
+  } catch (err) {
+    console.error('sfSwitchProfileTab error:', err);
+  }
+}
+
+// 扩展sfSwitchView，支持搜索和通知
+const _sfSwitchView = sfSwitchView;
+sfSwitchView = function(view) {
+  try {
+    sfState.currentView = view;
+    
+    // 更新底部导航
+    document.querySelectorAll('.sf-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.sfView === view);
+    });
+    
+    // 更新view显示
+    document.querySelectorAll('.sf-view').forEach(v => {
+      v.classList.remove('active');
+    });
+    
+    const viewMap = {
+      'home': 'sfHomeView',
+      'search': 'sfSearchView',
+      'notifications': 'sfNotifView',
+      'me': 'sfMeView'
+    };
+    
+    const targetView = document.getElementById(viewMap[view]);
+    if (targetView) {
+      targetView.classList.add('active');
+    }
+    
+    if (view === 'search') {
+      sfRenderTrends();
+    } else if (view === 'me') {
+      sfRenderProfile();
+    } else if (view === 'notifications') {
+      sfRenderNotifications();
+    }
+  } catch (err) {
+    console.error('sfSwitchView error:', err);
+  }
+};
+
+// 渲染通知
+function sfRenderNotifications() {
+  try {
+    const list = document.getElementById('sfNotifList');
+    if (!list) return;
+    
+    list.innerHTML = `
+      <div style="text-align:center;padding:60px 20px">
+        <div style="font-size:48px;margin-bottom:12px">🔔</div>
+        <div style="font-size:14px;color:#999">暂无通知</div>
+      </div>
+    `;
+  } catch (err) {
+    console.error('sfRenderNotifications error:', err);
+  }
+}
+
+// 扩展sfBindEvents，绑定更多事件
+const _sfBindEvents = sfBindEvents;
+sfBindEvents = function() {
+  if (sfEventsBound) return;
+  
+  try {
+    // 底部导航
+    document.querySelectorAll('.sf-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const view = tab.dataset.sfView;
+        sfSwitchView(view);
+      });
+    });
+    
+    // Tab切换
+    document.querySelectorAll('.sf-sub-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabName = tab.dataset.sfTab;
+        sfSwitchTab(tabName);
+      });
+    });
+    
+    // FAB按钮
+    const fab = document.getElementById('sfFab');
+    if (fab) {
+      fab.addEventListener('click', () => {
+        sfOpenPostModal();
+      });
+    }
+    
+    // 刷新按钮
+    const refreshBtn = document.getElementById('sfRefreshBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        sfRefreshFeed();
+      });
+    }
+    
+    // 评论发送
+    const commentSend = document.getElementById('sfCommentSend');
+    if (commentSend) {
+      commentSend.addEventListener('click', sfSubmitComment);
+    }
+    
+    // 搜索输入
+    const searchInput = document.getElementById('sfSearchInput');
+    if (searchInput) {
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          showToast('搜索功能开发中');
+        }
+      });
+    }
+    
+    sfEventsBound = true;
+  } catch (err) {
+    console.error('sfBindEvents error:', err);
+  }
+};
+
+// ==================== 论坛更多功能扩展 ====================
+
+// 扩展帖子数据，添加评论
+const _sfGenerateSamplePosts = sfGenerateSamplePosts;
+sfGenerateSamplePosts = function(tab) {
+  _sfGenerateSamplePosts(tab);
+  
+  // 为每个帖子生成评论
+  const posts = sfState.posts[tab];
+  posts.forEach(post => {
+    if (!sfState.commentsCache[post.id]) {
+      sfState.commentsCache[post.id] = sfGenerateComments(post);
+    }
+  });
+};
+
+// 生成评论
+function sfGenerateComments(post) {
+  const commentTemplates = [
+    { name: '小红', content: '说得太好了！', avatarIndex: 0 },
+    { name: '小明', content: '深有同感', avatarIndex: 1 },
+    { name: '阿花', content: '太治愈了🥹', avatarIndex: 2 },
+    { name: '路人甲', content: '关注了关注了', avatarIndex: 3 },
+    { name: '小透明', content: '第一！', avatarIndex: 4 }
+  ];
+  
+  const count = 3 + Math.floor(Math.random() * 3);
+  return commentTemplates.slice(0, count).map((c, i) => ({
+    id: Date.now() + i,
+    name: c.name,
+    content: c.content,
+    avatarIndex: c.avatarIndex,
+    likes: Math.floor(Math.random() * 100),
+    liked: false,
+    time: sfFormatTime(Date.now() - Math.random() * 3600000)
+  }));
+}
+
+// 扩展帖子详情渲染，添加评论点赞
+const _sfOpenPostDetail = sfOpenPostDetail;
+sfOpenPostDetail = function(postId) {
+  try {
+    const tab = sfState.currentTab;
+    const post = sfState.posts[tab].find(p => p.id === postId);
+    if (!post) return;
+    
+    sfState.currentPostId = postId;
+    
+    const overlay = document.getElementById('sfDetailOverlay');
+    const body = document.getElementById('sfDetailBody');
+    
+    const imageGrad = post.hasImage ? SF_GRADIENTS[post.imageIndex % 8] : '';
+    const verifiedHtml = post.verified ? '<span class="sf-post-verified">✓</span>' : '';
+    const comments = sfState.commentsCache[postId] || [];
+    
+    let html = `<div class="sf-post" style="border:0;cursor:default">`;
+    html += `<div class="sf-post-header">`;
+    html += `<div class="sf-post-avatar" style="background: ${SF_GRADIENTS[(post.id % 8)]}">${post.authorName?.[0] || '?'}</div>`;
+    html += `<div class="sf-post-meta">`;
+    html += `<span class="sf-post-name">${post.authorName || '匿名'}${verifiedHtml}</span>`;
+    html += `<span class="sf-post-handle">${post.authorTag || '普通用户'}</span>`;
+    html += `</div>`;
+    html += `<span class="sf-post-time">${post.time || '刚刚'}</span>`;
+    html += `</div>`;
+    
+    if (post.hasImage) {
+      html += `<div class="sf-post-image" style="background: ${imageGrad}"></div>`;
+    }
+    
+    html += `<div class="sf-post-content">${post.content || ''}</div>`;
+    html += `<div class="sf-post-actions">`;
+    html += `<span class="sf-post-action" onclick="sfHandlePostAction(${post.id}, 'comment')">💬 ${comments.length}</span>`;
+    html += `<span class="sf-post-action" onclick="sfHandlePostAction(${post.id}, 'repost')">🔄 ${post.reposts || 0}</span>`;
+    html += `<span class="sf-post-action ${post.liked ? 'liked' : ''}" onclick="sfHandlePostAction(${post.id}, 'like')">❤️ ${post.likes || 0}</span>`;
+    html += `<span class="sf-post-action ${post.saved ? 'saved' : ''}" onclick="sfHandlePostAction(${post.id}, 'save')">⭐ ${post.saves || 0}</span>`;
+    html += `</div>`;
+    html += `</div>`;
+    
+    // 评论区
+    html += `<div style="padding:14px 16px 4px;color:#999;font-size:13px;font-weight:700">评论 ${comments.length}</div>`;
+    html += `<div id="sfDetailComments">`;
+    
+    if (comments.length === 0) {
+      html += `<div style="text-align:center;padding:20px">
+        <div style="color:#999;font-size:13px;margin-bottom:12px">还没有评论</div>
+        <button class="sf-generate-btn" onclick="sfGenerateCommentsForPost(${post.id})">✨ 生成评论</button>
+      </div>`;
+    } else {
+      html += comments.map(c => `
+        <div class="sf-comment">
+          <div class="sf-comment-avatar" style="background: ${SF_GRADIENTS[c.avatarIndex % 8]}">${c.name?.[0] || '?'}</div>
+          <div class="sf-comment-content">
+            <div class="sf-comment-name">${c.name}</div>
+            <div class="sf-comment-text">${c.content}</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+              <span class="sf-comment-time">${c.time}</span>
+              <span class="sf-comment-like ${c.liked ? 'liked' : ''}" onclick="sfLikeComment(${post.id}, ${c.id})" style="cursor:pointer;font-size:12px;color:${c.liked ? '#FF6B9D' : '#999'}">
+                ❤️ ${c.likes}
+              </span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    html += `</div>`;
+    
+    body.innerHTML = html;
+    overlay.style.display = 'flex';
+  } catch (err) {
+    console.error('sfOpenPostDetail error:', err);
+    showToast('打开详情失败');
+  }
+};
+
+// 为帖子生成评论
+function sfGenerateCommentsForPost(postId) {
+  try {
+    const tab = sfState.currentTab;
+    const post = sfState.posts[tab].find(p => p.id === postId);
+    if (!post) return;
+    
+    sfState.commentsCache[postId] = sfGenerateComments(post);
+    sfOpenPostDetail(postId);
+    showToast('评论生成成功');
+  } catch (err) {
+    console.error('sfGenerateCommentsForPost error:', err);
+    showToast('生成失败');
+  }
+}
+
+// 评论点赞
+function sfLikeComment(postId, commentId) {
+  try {
+    const comments = sfState.commentsCache[postId];
+    if (!comments) return;
+    
+    const comment = comments.find(c => c.id === commentId);
+    if (!comment) return;
+    
+    comment.liked = !comment.liked;
+    comment.likes += comment.liked ? 1 : -1;
+    
+    sfOpenPostDetail(postId);
+  } catch (err) {
+    console.error('sfLikeComment error:', err);
+  }
+}
+
+// 扩展帖子操作，添加转发
+const _sfHandlePostAction = sfHandlePostAction;
+sfHandlePostAction = function(postId, action) {
+  try {
+    const tab = sfState.currentTab;
+    const post = sfState.posts[tab].find(p => p.id === postId);
+    if (!post) return;
+    
+    switch (action) {
+      case 'like':
+        post.liked = !post.liked;
+        post.likes += post.liked ? 1 : -1;
+        break;
+      case 'save':
+        post.saved = !post.saved;
+        post.saves = (post.saves || 0) + (post.saved ? 1 : -1);
+        if (post.saved) {
+          sfState.savedPosts.unshift(post);
+        } else {
+          sfState.savedPosts = sfState.savedPosts.filter(p => p.id !== postId);
+        }
+        break;
+      case 'repost':
+        post.reposts = (post.reposts || 0) + 1;
+        showToast('转发成功');
+        break;
+      case 'comment':
+        sfOpenPostDetail(postId);
+        return;
+    }
+    
+    sfRenderFeed();
+    
+    // 如果在个人主页，也刷新
+    if (sfState.currentView === 'me') {
+      sfRenderProfile();
+    }
+  } catch (err) {
+    console.error('sfHandlePostAction error:', err);
+  }
+};
+
+// 加载更多帖子
+function sfLoadMore() {
+  try {
+    const tab = sfState.currentTab;
+    showToast('加载更多...');
+    
+    setTimeout(() => {
+      const templates = {
+        following: [
+          { authorName: '月光下的猫', authorTag: '认证作者', content: '今天的日落真的太美了🌅', hasImage: true },
+          { authorName: '星河滚烫', authorTag: '优质作者', content: '分享一首最近在听的歌', hasImage: false }
+        ],
+        recommended: [
+          { authorName: '人间清醒', authorTag: '情感博主', content: '今天想聊聊关于成长的话题...', hasImage: true },
+          { authorName: '落日余晖', authorTag: '生活博主', content: '周末的下午茶时光☕', hasImage: true },
+          { authorName: '海盐焦糖', authorTag: '美食博主', content: '今天做了一道新菜，味道还不错！', hasImage: false }
+        ],
+        gossip: [
+          { authorName: '吃瓜群众', authorTag: '八卦达人', content: '今天吃到一个大瓜...', hasImage: false },
+          { authorName: '匿名用户', authorTag: '匿名', content: '有人知道最近的热点吗？', hasImage: false }
+        ]
+      };
+      
+      const newPosts = templates[tab] || templates.recommended;
+      newPosts.forEach((p, i) => {
+        const post = {
+          id: Date.now() + i,
+          authorName: p.authorName,
+          authorTag: p.authorTag,
+          content: p.content,
+          hasImage: p.hasImage,
+          imageIndex: Math.floor(Math.random() * 8),
+          likes: Math.floor(Math.random() * 1000),
+          comments: Math.floor(Math.random() * 100),
+          reposts: Math.floor(Math.random() * 50),
+          saves: Math.floor(Math.random() * 200),
+          views: Math.floor(Math.random() * 10000),
+          time: sfFormatTime(Date.now() - Math.random() * 86400000 * 2),
+          liked: false,
+          saved: false,
+          verified: false
+        };
+        sfState.posts[tab].push(post);
+        sfState.commentsCache[post.id] = sfGenerateComments(post);
+      });
+      
+      sfRenderFeed();
+      showToast('加载成功');
+    }, 500);
+  } catch (err) {
+    console.error('sfLoadMore error:', err);
+    showToast('加载失败');
+  }
+}
+
+// ==================== 同人文完整功能扩展 ====================
+
+// 扩展dfState
+dfState.tropes = [
+  '破镜重圆', '先婚后爱', '失忆梗', '替身恋人', '双向暗恋', 
+  '强制爱', '青梅竹马', '虐恋情深', '追妻火葬场', '白月光',
+  '重生', '穿越', 'ABO', '年下', '情敌变情人', '欢喜冤家'
+];
+dfState.selectedTropes = [];
+dfState.wordCount = 'medium'; // short/medium/long
+dfState.selectedCharacter = null;
+dfState.generating = false;
+dfState.generateProgress = 0;
+dfState.currentChapter = 0;
+dfState.characters = [
+  { id: 1, name: '顾言', tags: ['高冷', '霸道总裁'], desc: '顾氏集团总裁，外冷内热' },
+  { id: 2, name: '林夏', tags: ['温柔', '设计师'], desc: '新锐设计师，独立坚强' },
+  { id: 3, name: '沈墨', tags: ['腹黑', '医生'], desc: '心外科医生，心思缜密' }
+];
+
+// 打开生成页面
+function dfOpenGenerate() {
+  try {
+    showToast('生成功能开发中');
+  } catch (err) {
+    console.error('dfOpenGenerate error:', err);
+  }
+}
+
+// 切换梗选择
+function dfToggleTrope(trope) {
+  try {
+    const index = dfState.selectedTropes.indexOf(trope);
+    if (index > -1) {
+      dfState.selectedTropes.splice(index, 1);
+    } else {
+      if (dfState.selectedTropes.length >= 3) {
+        showToast('最多选择3个梗');
+        return;
+      }
+      dfState.selectedTropes.push(trope);
+    }
+  } catch (err) {
+    console.error('dfToggleTrope error:', err);
+  }
+}
+
+// 选择字数
+function dfSelectWordCount(count) {
+  try {
+    dfState.wordCount = count;
+  } catch (err) {
+    console.error('dfSelectWordCount error:', err);
+  }
+}
+
+// 生成同人文
+function dfGenerateWork() {
+  try {
+    if (dfState.generating) return;
+    
+    dfState.generating = true;
+    dfState.generateProgress = 0;
+    
+    showToast('生成中...');
+    
+    // 模拟生成进度
+    const interval = setInterval(() => {
+      dfState.generateProgress += Math.random() * 15;
+      if (dfState.generateProgress >= 100) {
+        dfState.generateProgress = 100;
+        clearInterval(interval);
+        dfState.generating = false;
+        
+        // 生成完成，添加到作品列表
+        const newWork = {
+          id: Date.now(),
+          title: dfState.selectedTropes[0] ? dfState.selectedTropes[0] + '之恋' : '原创故事',
+          author: 'AI生成',
+          tags: dfState.selectedTropes.length > 0 ? dfState.selectedTropes : ['原创'],
+          icon: '📖',
+          desc: '一个精彩的故事',
+          gradientIndex: Math.floor(Math.random() * 8),
+          words: dfState.wordCount === 'short' ? 5000 : dfState.wordCount === 'medium' ? 20000 : 50000,
+          chapters: [
+            { title: '第一章 初见', content: '这是一个精彩的故事...\n\n阳光透过窗户洒进房间，落在她的脸上。他站在门口，静静地看着她，那一刻，时间仿佛静止了。' },
+            { title: '第二章 心动', content: '日子一天天过去，他们的关系也在悄然发生变化...\n\n他发现自己越来越在意她的一举一动，她的笑容、她的皱眉、她的每一个表情，都深深印在他的心里。' },
+            { title: '第三章 误会', content: '一个误会，让他们的关系降到了冰点...\n\n他看着她离去的背影，心里充满了无力感。他想解释，却不知道该从何说起。' }
+          ],
+          currentChapter: 0,
+          isMine: true
+        };
+        
+        dfState.works.unshift(newWork);
+        dfRenderWorks();
+        showToast('生成成功');
+      }
+    }, 300);
+  } catch (err) {
+    console.error('dfGenerateWork error:', err);
+    dfState.generating = false;
+    showToast('生成失败');
+  }
+}
+
+// 扩展作品详情，添加分章节和人物卡
+const _dfOpenWorkDetail = dfOpenWorkDetail;
+dfOpenWorkDetail = function(workId) {
+  try {
+    const work = dfState.works.find(w => w.id === workId);
+    if (!work) return;
+    
+    dfState.currentWorkId = workId;
+    
+    const overlay = document.getElementById('dfDetailOverlay');
+    const body = document.getElementById('dfDetailBody');
+    
+    const chapters = work.chapters || [];
+    const currentChapter = work.currentChapter || 0;
+    const currentChapterContent = chapters[currentChapter]?.content || work.content || '';
+    
+    body.innerHTML = `
+      <div class="df-detail-cover" style="background: ${DF_GRADIENTS[work.gradientIndex]}">${work.icon}</div>
+      <div class="df-detail-title">${work.title}</div>
+      <div class="df-detail-author">作者：${work.author} · ${Math.floor(work.words / 1000)}千字</div>
+      <div class="df-detail-tags">
+        ${work.tags.map(t => `<span class="df-detail-tag">${t}</span>`).join('')}
+      </div>
+      <div class="df-detail-desc">${work.desc}</div>
+      
+      <!-- 人物设定卡 -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:15px;font-weight:600;margin-bottom:12px;color:#333">👤 人物设定</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          ${dfState.characters.slice(0, 2).map(c => `
+            <div style="background:#fafafa;border-radius:10px;padding:12px">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#FFB6C1,#FF69B4);display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:14px">${c.name?.[0] || '?'}</div>
+                <div>
+                  <div style="font-size:14px;font-weight:600">${c.name}</div>
+                  <div style="font-size:11px;color:#999">${c.tags.join(' / ')}</div>
+                </div>
+              </div>
+              <div style="font-size:12px;color:#666;line-height:1.4">${c.desc}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      
+      <!-- 章节目录 -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:15px;font-weight:600;margin-bottom:12px;color:#333">📚 章节目录</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${chapters.map((ch, i) => `
+            <div onclick="dfReadChapter(${workId}, ${i})" style="padding:12px;background:${i === currentChapter ? '#FFF0F5' : '#fafafa'};border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:14px;color:${i === currentChapter ? '#FF6B9D' : '#333'};font-weight:${i === currentChapter ? '600' : '400'}">${ch.title}</span>
+              <span style="font-size:12px;color:#999">${i === currentChapter ? '阅读中' : ''}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      
+      <!-- 正文 -->
+      <div style="margin-bottom:20px">
+        <div style="font-size:15px;font-weight:600;margin-bottom:12px;color:#333">📖 ${chapters[currentChapter]?.title || '正文'}</div>
+        <div class="df-detail-content">${currentChapterContent}</div>
+      </div>
+      
+      ${currentChapter < chapters.length - 1 ? `
+        <button style="width:100%;padding:12px;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:white;border:none;border-radius:10px;font-size:14px;cursor:pointer;margin-bottom:20px" onclick="dfNextChapter(${workId})">
+          下一章 →
+        </button>
+      ` : ''}
+    `;
+    
+    overlay.style.display = 'flex';
+  } catch (err) {
+    console.error('dfOpenWorkDetail error:', err);
+    showToast('打开详情失败');
+  }
+};
+
+// 阅读章节
+function dfReadChapter(workId, chapterIndex) {
+  try {
+    const work = dfState.works.find(w => w.id === workId);
+    if (!work) return;
+    
+    work.currentChapter = chapterIndex;
+    dfOpenWorkDetail(workId);
+  } catch (err) {
+    console.error('dfReadChapter error:', err);
+  }
+}
+
+// 下一章
+function dfNextChapter(workId) {
+  try {
+    const work = dfState.works.find(w => w.id === workId);
+    if (!work || !work.chapters) return;
+    
+    if (work.currentChapter < work.chapters.length - 1) {
+      work.currentChapter++;
+      dfOpenWorkDetail(workId);
+    }
+  } catch (err) {
+    console.error('dfNextChapter error:', err);
+  }
+}
+
+// 扩展FAB按钮功能
+const _dfBindEvents = dfBindEvents;
+dfBindEvents = function() {
+  if (dfEventsBound) return;
+  
+  try {
+    // 标签切换
+    document.querySelectorAll('.df-tag').forEach(tag => {
+      tag.addEventListener('click', () => {
+        const tagName = tag.dataset.dfTag;
+        dfSwitchTag(tagName);
+      });
+    });
+    
+    // 底部导航
+    document.querySelectorAll('.df-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const view = tab.dataset.dfView;
+        dfSwitchView(view);
+      });
+    });
+    
+    // FAB按钮
+    const fab = document.getElementById('dfFab');
+    if (fab) {
+      fab.addEventListener('click', () => {
+        dfGenerateWork();
+      });
+    }
+    
+    dfEventsBound = true;
+  } catch (err) {
+    console.error('dfBindEvents error:', err);
+  }
+};
+
+// ==================== 米粒消耗计费系统 ====================
+
+// 论坛生成帖子消耗米粒
+const FORUM_POST_COST = 2;
+// 论坛生成评论消耗米粒
+const FORUM_COMMENT_COST = 1;
+// 同人文生成消耗米粒
+const FANFIC_COST = 10;
+
+// 检查米粒是否足够
+function checkRice(cost) {
+  const rice = AppState.user?.rice_balance || 0;
+  return rice >= cost;
+}
+
+// 消耗米粒（前端模拟）
+function consumeRice(cost, description) {
+  try {
+    if (AppState.user && AppState.user.rice_balance !== undefined) {
+      AppState.user.rice_balance -= cost;
+      // 更新UI上的米粒显示
+      updateRiceDisplay();
+    }
+    console.log(`消耗 ${cost} 米粒: ${description}`);
+  } catch (err) {
+    console.error('consumeRice error:', err);
+  }
+}
+
+// 扩展论坛刷新，添加米粒消耗
+const _sfRefreshFeed = sfRefreshFeed;
+sfRefreshFeed = function() {
+  try {
+    if (!checkRice(FORUM_POST_COST)) {
+      showToast('米粒不足，请先充值');
+      return;
+    }
+    
+    showToast('生成中...');
+    setTimeout(() => {
+      const tab = sfState.currentTab;
+      sfGenerateSamplePosts(tab);
+      sfRenderFeed();
+      consumeRice(FORUM_POST_COST, '生成论坛帖子');
+      showToast(`生成成功，消耗${FORUM_POST_COST}米粒`);
+    }, 500);
+  } catch (err) {
+    console.error('sfRefreshFeed error:', err);
+    showToast('生成失败');
+  }
+};
+
+// 扩展生成评论，添加米粒消耗
+const _sfGenerateCommentsForPost = sfGenerateCommentsForPost;
+sfGenerateCommentsForPost = function(postId) {
+  try {
+    if (!checkRice(FORUM_COMMENT_COST)) {
+      showToast('米粒不足，请先充值');
+      return;
+    }
+    
+    const tab = sfState.currentTab;
+    const post = sfState.posts[tab].find(p => p.id === postId);
+    if (!post) return;
+    
+    sfState.commentsCache[postId] = sfGenerateComments(post);
+    sfOpenPostDetail(postId);
+    consumeRice(FORUM_COMMENT_COST, '生成论坛评论');
+    showToast(`生成成功，消耗${FORUM_COMMENT_COST}米粒`);
+  } catch (err) {
+    console.error('sfGenerateCommentsForPost error:', err);
+    showToast('生成失败');
+  }
+};
+
+// 扩展同人文生成，添加米粒消耗
+const _dfGenerateWork = dfGenerateWork;
+dfGenerateWork = function() {
+  try {
+    if (dfState.generating) return;
+    
+    if (!checkRice(FANFIC_COST)) {
+      showToast('米粒不足，请先充值');
+      return;
+    }
+    
+    dfState.generating = true;
+    dfState.generateProgress = 0;
+    
+    showToast('生成中...');
+    
+    // 模拟生成进度
+    const interval = setInterval(() => {
+      dfState.generateProgress += Math.random() * 15;
+      if (dfState.generateProgress >= 100) {
+        dfState.generateProgress = 100;
+        clearInterval(interval);
+        dfState.generating = false;
+        
+        // 生成完成，添加到作品列表
+        const newWork = {
+          id: Date.now(),
+          title: dfState.selectedTropes[0] ? dfState.selectedTropes[0] + '之恋' : '原创故事',
+          author: 'AI生成',
+          tags: dfState.selectedTropes.length > 0 ? dfState.selectedTropes : ['原创'],
+          icon: '📖',
+          desc: '一个精彩的故事',
+          gradientIndex: Math.floor(Math.random() * 8),
+          words: dfState.wordCount === 'short' ? 5000 : dfState.wordCount === 'medium' ? 20000 : 50000,
+          chapters: [
+            { title: '第一章 初见', content: '这是一个精彩的故事...\n\n阳光透过窗户洒进房间，落在她的脸上。他站在门口，静静地看着她，那一刻，时间仿佛静止了。' },
+            { title: '第二章 心动', content: '日子一天天过去，他们的关系也在悄然发生变化...\n\n他发现自己越来越在意她的一举一动，她的笑容、她的皱眉、她的每一个表情，都深深印在他的心里。' },
+            { title: '第三章 误会', content: '一个误会，让他们的关系降到了冰点...\n\n他看着她离去的背影，心里充满了无力感。他想解释，却不知道该从何说起。' }
+          ],
+          currentChapter: 0,
+          isMine: true
+        };
+        
+        dfState.works.unshift(newWork);
+        dfRenderWorks();
+        consumeRice(FANFIC_COST, '生成同人文');
+        showToast(`生成成功，消耗${FANFIC_COST}米粒`);
+      }
+    }, 300);
+  } catch (err) {
+    console.error('dfGenerateWork error:', err);
+    dfState.generating = false;
+    showToast('生成失败');
+  }
 };
