@@ -1,0 +1,4010 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Mochi-phone</title>
+    <meta name="theme-color" content="#FF6B9D" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Mochi-phone" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/mochi-phone-icon.svg" />
+    <link rel="apple-touch-icon" href="icons/mochi-phone-icon.svg" />
+    <link rel="stylesheet" href="/novel-game.css" />
+    <style>
+:root {
+  --color-primary: #FF6B9D;
+  --color-primary-dark: #e55d8a;
+  --color-accent: #FFB6C1;
+  --color-bg: #FFF5F7;
+  --color-surface: rgba(255, 255, 255, 0.92);
+  --color-text: #333333;
+  --color-muted: #999999;
+  --color-border: rgba(255, 107, 157, 0.15);
+  --color-danger: #e95656;
+  --chat-wallpaper: linear-gradient(180deg, #FFF5F7 0%, #FFE4EC 100%);
+  --bubble-user-bg: linear-gradient(135deg, #FF6B9D, #FFB6C1);
+  --bubble-user-text: #ffffff;
+  --bubble-ai-bg: rgba(255, 255, 255, 0.96);
+  --bubble-ai-text: #333333;
+  --bubble-radius: 18px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #FFF0F5;
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+.app-shell {
+  position: relative;
+  width: min(100vw, 430px);
+  min-height: 100vh;
+  margin: 0 auto;
+  overflow: hidden;
+  background: var(--color-bg);
+  box-shadow: 0 0 40px rgba(255, 107, 157, 0.14);
+}
+
+.top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  background: rgba(247, 245, 255, 0.9);
+  backdrop-filter: blur(18px);
+}
+
+.eyebrow {
+  margin: 0 0 2px;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-size: 22px;
+}
+
+.beans-badge,
+.primary-small,
+.chat-input-bar button,
+.search-row button,
+.profile-card button,
+.package-card,
+.modal-actions button {
+  border-radius: 999px;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.beans-badge {
+  padding: 9px 13px;
+  box-shadow: 0 8px 18px rgba(255, 107, 157, 0.24);
+}
+
+.page-stack {
+  height: calc(100vh - 73px);
+}
+
+.page {
+  display: none;
+  height: calc(100vh - 73px);
+  padding: 0 14px 86px;
+  overflow-y: auto;
+}
+
+.page.active {
+  display: block;
+}
+
+#chatPage {
+  padding: 0;
+  overflow: hidden;
+}
+
+#chatPage.active {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.role-switcher {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 8px 14px 10px;
+  scrollbar-width: none;
+}
+
+.role-chip {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 14px 9px 9px;
+  font-size: 16px;
+  font-weight: 800;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.role-chip.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: linear-gradient(135deg, #FFD6E0, #FFD6E0);
+}
+
+.chat-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-bottom: calc(92px + var(--safe-bottom));
+  overflow-y: auto;
+  background: var(--chat-wallpaper);
+  background-size: cover;
+  background-position: center;
+}
+
+.message-list {
+  min-height: 100%;
+  padding: 18px 14px 120px;
+}
+
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.message-row.user {
+  flex-direction: row-reverse;
+}
+
+.chat-bubble {
+  max-width: 74%;
+  padding: 11px 13px;
+  border-radius: var(--bubble-radius);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 6px 18px rgba(255, 107, 157, 0.08);
+}
+
+.message-row.user .chat-bubble {
+  border-bottom-right-radius: 5px;
+  background: var(--bubble-user-bg);
+  color: var(--bubble-user-text);
+}
+
+.message-row.assistant .chat-bubble {
+  border-bottom-left-radius: 5px;
+  background: var(--bubble-ai-bg);
+  color: var(--bubble-ai-text);
+}
+
+.typing-dot {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.typing-dot i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  animation: bounce 0.9s infinite alternate;
+}
+
+.typing-dot i:nth-child(2) {
+  animation-delay: 0.14s;
+}
+
+.typing-dot i:nth-child(3) {
+  animation-delay: 0.28s;
+}
+
+@keyframes bounce {
+  to {
+    transform: translateY(-4px);
+    opacity: 0.4;
+  }
+}
+
+.chat-input-bar {
+  position: fixed;
+  right: calc((100vw - min(100vw, 430px)) / 2);
+  bottom: calc(58px + var(--safe-bottom));
+  left: calc((100vw - min(100vw, 430px)) / 2);
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  width: min(100vw, 430px);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.94);
+  border-top: 1px solid var(--color-border);
+}
+
+.chat-plus-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #fff0f3;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 300;
+  color: #FF6B9D;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.chat-plus-btn:active {
+  background: #ffe0e6;
+  transform: scale(0.95);
+}
+
+.chat-plus-panel {
+  position: fixed;
+  right: calc((100vw - min(100vw, 430px)) / 2);
+  bottom: calc(58px + var(--safe-bottom) + 60px);
+  left: calc((100vw - min(100vw, 430px)) / 2);
+  width: min(100vw, 430px);
+  background: rgba(255, 255, 255, 0.98);
+  border-top: 1px solid var(--color-border);
+  padding: 16px;
+  z-index: 100;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+}
+
+.chat-plus-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.chat-plus-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 12px 8px;
+  border-radius: 12px;
+  transition: background 0.2s;
+}
+.chat-plus-item:active {
+  background: #fff0f3;
+}
+
+.chat-plus-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #FF6B9D, #FFB6C1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #fff;
+}
+
+.chat-plus-label {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+}
+
+.chat-input-bar textarea,
+input,
+textarea,
+select {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 11px 12px;
+  outline: none;
+  background: #fff;
+  color: var(--color-text);
+  resize: none;
+}
+
+.chat-input-bar textarea {
+  max-height: 96px;
+}
+
+.chat-zone-tabs {
+  display: flex;
+  gap: 0;
+  padding: 6px 16px;
+  background: #fff5f7;
+  border-bottom: 1px solid #ffe0e6;
+}
+.chat-zone-tab {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a87b8c;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.chat-zone-tab.active {
+  color: #FF6B9D;
+  border-bottom-color: #FF6B9D;
+}
+.chat-offline-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  background: #fff3e0;
+  border-bottom: 1px solid #ffe0b2;
+  font-size: 12px;
+  color: #f57c00;
+}
+.offline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f57c00;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.chat-bubble img.chat-img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: block;
+}
+.chat-bubble .chat-file-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 8px;
+  font-size: 13px;
+  min-width: 160px;
+}
+.chat-bubble .chat-file-card .file-icon {
+  font-size: 24px;
+}
+.chat-bubble .chat-file-card .file-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-bubble .chat-redpacket {
+  background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 10px;
+  min-width: 180px;
+  cursor: pointer;
+}
+.chat-bubble .chat-redpacket .rp-amount {
+  font-size: 20px;
+  font-weight: 700;
+}
+.chat-bubble .chat-redpacket .rp-note {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+.chat-bubble .chat-redpacket .rp-label {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 6px;
+}
+.msg-reply-btn {
+  display: block;
+  margin-top: 8px;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #FF6B9D, #FFB6C1);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.msg-reply-btn:active {
+  opacity: 0.7;
+}
+.chat-reply-btn {
+  min-width: 56px;
+  padding: 0 10px;
+  border-radius: 16px;
+  background: #fff0f3;
+  color: #FF6B9D;
+  font-size: 12px;
+  font-weight: 600;
+  transition: opacity 0.2s, transform 0.16s;
+  flex-shrink: 0;
+}
+.chat-reply-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.chat-reply-btn:not(:disabled):active {
+  transform: scale(0.95);
+  background: #ffe0e6;
+}
+
+.chat-input-bar button {
+  min-width: 64px;
+  padding: 0 14px;
+}
+
+.bottom-nav {
+  position: fixed;
+  right: calc((100vw - min(100vw, 430px)) / 2);
+  bottom: 0;
+  left: calc((100vw - min(100vw, 430px)) / 2);
+  z-index: 30;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  width: min(100vw, 430px);
+  padding: 8px 8px calc(8px + var(--safe-bottom));
+  background: rgba(255, 255, 255, 0.94);
+  border-top: 1px solid var(--color-border);
+  backdrop-filter: blur(18px);
+}
+
+.bottom-nav button {
+  padding: 8px 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--color-muted);
+}
+
+.bottom-nav button.active {
+  background: rgba(255, 107, 157, 0.12);
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+.section-header,
+.search-row,
+.tabs,
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-header {
+  justify-content: space-between;
+  padding-top: 10px;
+}
+
+.primary-small {
+  padding: 9px 14px;
+}
+
+.card-list,
+.waterfall-list,
+.transaction-list,
+.memory-list {
+  display: grid;
+  gap: 12px;
+}
+
+.role-card,
+.community-card,
+.memory-card,
+.profile-card,
+.panel {
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background: var(--color-surface);
+  box-shadow: 0 10px 24px rgba(255, 107, 157, 0.06);
+}
+
+.role-card,
+.community-card {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 12px;
+}
+
+.role-card h3,
+.community-card h3,
+.memory-card h3 {
+  margin-bottom: 4px;
+}
+
+.memory-card {
+  display: grid;
+  gap: 8px;
+}
+
+.memory-meta {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.role-card p,
+.community-card p,
+.muted {
+  margin-bottom: 8px;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card-actions button,
+.settings-list button,
+.tabs button {
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: rgba(255, 107, 157, 0.1);
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.search-row {
+  padding: 12px 0;
+}
+
+.search-row button {
+  padding: 11px 14px;
+}
+
+.profile-card,
+.panel {
+  margin-top: 12px;
+}
+
+.profile-header{display:flex;align-items:center;gap:14px;padding:20px 16px;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);border-radius:22px;margin-top:12px;box-shadow:0 8px 24px rgba(255,107,157,.2)}
+.profile-header-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.6);background:rgba(255,255,255,.2);flex-shrink:0}
+.profile-header-info{flex:1;min-width:0}
+.profile-header-name{font-size:1.2rem;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.15)}
+.profile-header-bio{font-size:.85rem;color:rgba(255,255,255,.85);margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+.profile-card label {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.avatar-uploader {
+  justify-items: center;
+  text-align: center;
+}
+
+.avatar-uploader img {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: linear-gradient(135deg, #FFD6E0, #FFD6E0);
+}
+
+.avatar-uploader input {
+  display: none;
+}
+
+.balance {
+  display: block;
+  margin: 8px 0 12px;
+  color: var(--color-primary);
+  font-size: 34px;
+}
+
+.package-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.package-card {
+  padding: 12px;
+}
+
+.settings-list {
+  display: grid;
+  gap: 10px;
+}
+
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 12px 0;
+  background: var(--color-bg);
+}
+
+.tabs button.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.costume-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.code-editor {
+  min-height: 260px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+}
+
+.wallpaper-preview {
+  min-height: 160px;
+  border-radius: 22px;
+  background: var(--chat-wallpaper);
+  background-position: center;
+  background-size: cover;
+}
+
+.modal {
+  width: min(92vw, 390px);
+  border: 0;
+  border-radius: 24px;
+  padding: 18px;
+  color: var(--color-text);
+}
+
+.modal::backdrop {
+  background: rgba(255, 107, 157, 0.42);
+}
+
+.modal label {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 11px;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.switch-line {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.switch-line input {
+  width: auto;
+}
+
+.modal-actions {
+  justify-content: end;
+}
+
+.modal-actions span {
+  flex: 1;
+}
+
+.modal-actions button {
+  padding: 10px 14px;
+}
+
+.modal-actions button[value="cancel"] {
+  background: #FFF0F3;
+  color: var(--color-text);
+}
+
+.danger {
+  background: var(--color-danger) !important;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(82px + var(--safe-bottom));
+  z-index: 80;
+  max-width: min(86vw, 360px);
+  padding: 11px 14px;
+  border-radius: 999px;
+  background: rgba(255, 107, 157, 0.92);
+  color: #fff;
+  opacity: 0;
+  transform: translate(-50%, 12px);
+  pointer-events: none;
+  transition: 0.24s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.empty-state {
+  padding: 26px 16px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+
+.phone-status-panel {
+  margin: 0 14px 10px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(244,241,255,.92));
+  box-shadow: var(--shadow);
+}
+
+.phone-status-head,
+.phone-status-grid,
+.timeline-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.phone-status-title {
+  font-weight: 900;
+}
+
+.phone-status-sub {
+  color: var(--color-muted);
+  font-size: .84rem;
+}
+
+.phone-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 10px 0;
+}
+
+.phone-stat {
+  padding: 9px 8px;
+  border-radius: 16px;
+  background: rgba(255, 107, 157, .08);
+  text-align: center;
+}
+
+.phone-stat strong {
+  display: block;
+  font-size: 1rem;
+}
+
+.phone-stat span {
+  color: var(--color-muted);
+  font-size: .78rem;
+}
+
+.relation-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 107, 157, .12);
+}
+
+.relation-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #FFB6C1, #FF6B9D);
+}
+
+.proactive-button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 12px;
+}
+
+
+
+#roleSwitcher.role-switcher {
+  position: relative;
+  z-index: 12;
+  flex: 0 0 auto;
+  gap: 10px;
+  padding: 9px 14px 10px;
+  background: linear-gradient(180deg, rgba(247,245,255,.98), rgba(247,245,255,.78));
+  border-bottom: 1px solid rgba(229,225,246,.7);
+}
+
+#roleSwitcher .role-chip {
+  min-height: 54px !important;
+  padding: 8px 13px 8px 8px !important;
+  font-size: 16px !important;
+  font-weight: 850 !important;
+  box-shadow: 0 6px 14px rgba(35,33,54,.08);
+}
+
+#roleSwitcher .role-chip .avatar {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+#chatPage .chat-container {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 0;
+  border-top: 1px solid rgba(229,225,246,.7);
+}
+
+#chatPage .message-list {
+  padding-top: 16px;
+  padding-bottom: calc(150px + var(--safe-bottom));
+}
+
+#chatPage .chat-input-bar {
+  z-index: 28;
+}
+
+.phone-shell {
+  min-height: calc(100vh - 170px);
+  padding: 16px 14px 104px;
+  border-radius: 30px;
+  background:
+    linear-gradient(rgba(35, 28, 55, .18), rgba(35, 28, 55, .22)),
+    var(--chat-wallpaper),
+    linear-gradient(160deg, #fff5fb, #ede9ff);
+  background-size: cover;
+  background-position: center;
+  color: var(--color-text);
+}
+
+.phone-lock {
+  padding: 18px 6px 12px;
+  text-align: center;
+}
+
+.phone-lock-time {
+  font-size: 48px;
+  font-weight: 300;
+  letter-spacing: .04em;
+}
+
+.phone-lock-date {
+  color: rgba(255, 107, 157, .62);
+}
+
+.phone-widget-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 12px 0 22px;
+}
+
+.phone-widget {
+  min-height: 76px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.64);
+  border-radius: 22px;
+  background: rgba(255,255,255,.46);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 28px rgba(35,33,54,.08);
+}
+
+.phone-widget strong {
+  display: block;
+  font-size: 1.15rem;
+}
+
+.phone-widget span {
+  color: rgba(255, 107, 157, .64);
+  font-size: .84rem;
+}
+
+.phone-app-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px 14px;
+}
+
+.phone-app {
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  text-align: center;
+}
+
+.phone-app-icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 7px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #FF6B9D, #FFB6C1);
+  color: #fff;
+  font-size: 26px;
+  box-shadow: 0 10px 24px rgba(255,107,157,.24);
+}
+
+.phone-app span {
+  font-size: .86rem;
+  font-weight: 700;
+}
+
+.phone-app-panel {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.68);
+  border-radius: 24px;
+  background: rgba(255,255,255,.74);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow);
+}
+
+.phone-app-panel.hidden {
+  display: none;
+}
+
+.phone-app-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.phone-app-head h3 {
+  margin: 0;
+}
+
+.phone-app-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 107, 157, .1);
+  color: var(--color-primary);
+}
+
+.phone-mini-list {
+  display: grid;
+  gap: 10px;
+}
+
+.phone-mini-card {
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: rgba(255,255,255,.72);
+}
+
+.phone-mini-card h4 {
+  margin: 0 0 6px;
+}
+
+.phone-mini-card p {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+
+.compact-apps {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.forum-world {
+  display: grid;
+  gap: 12px;
+}
+
+.forum-hero-card {
+  padding: 15px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(35,33,54,.95), rgba(255,107,157,.82));
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(35,33,54,.18);
+}
+
+.forum-hero-card h4 {
+  margin: 0 0 6px;
+  font-size: 1.12rem;
+}
+
+.forum-hero-card p {
+  margin: 0;
+  color: rgba(255,255,255,.78);
+  line-height: 1.6;
+}
+
+.forum-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.forum-tabs span {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: rgba(255,107,157,.10);
+  color: var(--color-primary);
+  font-size: .78rem;
+  font-weight: 850;
+}
+
+.forum-post-list {
+  display: grid;
+  gap: 10px;
+}
+
+.forum-post-card {
+  padding: 13px;
+  border: 1px solid rgba(255,107,157,.14);
+  border-radius: 20px;
+  background: rgba(255,255,255,.82);
+}
+
+.forum-post-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.forum-board-tag {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(35,33,54,.08);
+  color: var(--color-muted);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.forum-post-card h4 {
+  margin: 0 0 6px;
+  line-height: 1.35;
+}
+
+.forum-post-card p {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.65;
+}
+
+.forum-post-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--color-muted);
+  font-size: .76rem;
+}
+
+.forum-rules-card {
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(255,255,255,.66);
+  border: 1px dashed rgba(255,107,157,.24);
+  color: var(--color-muted);
+  line-height: 1.65;
+  font-size: .84rem;
+}
+
+.timeline-list {
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-item {
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: rgba(255,255,255,.86);
+}
+
+.timeline-item h4 {
+  margin: 0;
+}
+
+.timeline-item p {
+  margin: 8px 0 0;
+  color: var(--color-text);
+  line-height: 1.65;
+}
+
+.timeline-meta {
+  color: var(--color-muted);
+  font-size: .78rem;
+}
+
+@media (min-width: 431px) {
+  .app-shell {
+    min-height: 920px;
+  }
+}
+
+/* === Forum Full-screen Overlay (Xiaohongshu style) === */
+.forum-overlay{position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;background:#FFF5F7;display:none;flex-direction:column;animation:forumSlideIn .3s ease}
+.forum-overlay.active{display:flex}
+@keyframes forumSlideIn{from{transform:translateY(100%);opacity:.6}to{transform:translateY(0);opacity:1}}
+.forum-overlay-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,.06)}
+.forum-overlay-title{font-size:1.15rem;font-weight:800;color:#333333}
+.forum-overlay-actions{display:flex;gap:8px}
+.forum-overlay-btn{width:36px;height:36px;border:0;border-radius:50%;background:rgba(255,107,157,.1);color:#333333;font-size:1.1rem;cursor:pointer;display:grid;place-items:center;transition:background .2s}
+.forum-overlay-btn:active{background:rgba(255,107,157,.25)}
+.forum-tabs-bar{display:flex;position:sticky;top:57px;z-index:9;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,.06)}
+.forum-tab-item{flex:1;padding:14px 0;text-align:center;font-size:.95rem;font-weight:600;color:#999;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;background:none;border-top:0;border-left:0;border-right:0}
+.forum-tab-item.active{color:#333333;border-bottom-color:#FF6B9D;font-weight:800}
+.forum-post-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px;padding-bottom:80px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.forum-xhs-card{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;transition:transform .15s}
+.forum-xhs-card:active{transform:scale(.97)}
+.forum-xhs-cover{width:100%;aspect-ratio:3/4;background:linear-gradient(135deg,var(--c1,#FFD6E0),var(--c2,#FF6B9D));display:flex;align-items:flex-end;padding:10px;position:relative}
+.forum-xhs-cover-text{color:#fff;font-size:.88rem;line-height:1.4;font-weight:500;text-shadow:0 1px 3px rgba(0,0,0,.3);overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
+.forum-xhs-tag{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.3);color:#fff;font-size:.7rem;padding:2px 8px;border-radius:10px;backdrop-filter:blur(4px)}
+.forum-xhs-footer{padding:8px 10px}
+.forum-xhs-author{display:flex;align-items:center;gap:5px}
+.forum-xhs-avatar{width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.forum-xhs-name{font-size:.78rem;color:#333;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.forum-xhs-likes{font-size:.78rem;color:#999;margin-left:auto;display:flex;align-items:center;gap:3px}
+.forum-loading{text-align:center;padding:40px 20px;color:#999;font-size:.9rem;grid-column:1/-1}
+.forum-empty{text-align:center;padding:60px 20px;color:#999;font-size:.9rem;grid-column:1/-1}
+.forum-fab{position:fixed;bottom:20px;right:20px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff;border:0;font-size:1.6rem;cursor:pointer;z-index:1001;display:grid;place-items:center;box-shadow:0 4px 16px rgba(255,107,157,.4);transition:transform .2s}
+.forum-fab:active{transform:scale(.92)}
+.forum-post-detail{position:fixed;top:0;left:0;right:0;bottom:0;z-index:1002;background:#FFF5F7;display:none;flex-direction:column;animation:forumSlideIn .3s ease}
+.forum-post-detail.active{display:flex}
+.forum-detail-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,.06)}
+.forum-detail-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.forum-detail-post{padding:16px;background:#fff;border-bottom:8px solid #f5f5f7}
+.forum-detail-author{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.forum-detail-avatar{width:42px;height:42px;border-radius:50%;object-fit:cover}
+.forum-detail-name{font-weight:700;font-size:.95rem;color:#333333}
+.forum-detail-time{font-size:.8rem;color:#999}
+.forum-detail-text{font-size:.95rem;line-height:1.6;color:#333333;white-space:pre-wrap;word-break:break-word}
+.forum-detail-actions{display:flex;gap:20px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(0,0,0,.05)}
+.forum-detail-action{display:flex;align-items:center;gap:5px;font-size:.85rem;color:#666;cursor:pointer}
+.forum-detail-action.liked{color:#e74c3c}
+.forum-detail-comments{padding:16px}
+.forum-detail-comments h4{font-size:.9rem;color:#999;margin-bottom:12px}
+.forum-comment-item{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.forum-comment-avatar{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.forum-comment-body{flex:1}
+.forum-comment-author{font-weight:600;font-size:.85rem;color:#333333}
+.forum-comment-text{font-size:.88rem;color:#333;line-height:1.5;margin-top:2px}
+.forum-comment-time{font-size:.75rem;color:#999;margin-top:2px}
+.forum-comment-input-wrap{position:sticky;bottom:0;padding:10px 16px;background:#fff;border-top:1px solid rgba(0,0,0,.06);display:flex;gap:8px}
+.forum-comment-input{flex:1;border:1px solid rgba(0,0,0,.1);border-radius:20px;padding:8px 14px;font-size:.9rem;outline:none}
+.forum-comment-input:focus{border-color:#FF6B9D}
+.forum-comment-send{border:0;border-radius:20px;padding:8px 16px;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff;font-weight:600;cursor:pointer}
+.forum-post-modal{position:fixed;top:0;left:0;right:0;bottom:0;z-index:1003;background:rgba(0,0,0,.4);display:none;align-items:flex-end;justify-content:center}
+.forum-post-modal.active{display:flex}
+.forum-post-modal-content{width:100%;max-width:430px;background:#fff;border-radius:20px 20px 0 0;padding:20px;animation:forumModalSlideUp .3s ease}
+@keyframes forumModalSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.forum-post-modal textarea{width:100%;min-height:120px;border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:12px;font-size:.95rem;resize:none;font-family:inherit;outline:none}
+.forum-post-modal textarea:focus{border-color:#FF6B9D}
+.forum-post-modal-actions{display:flex;gap:10px;margin-top:12px}
+.forum-post-modal-btn{flex:1;padding:10px;border:0;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer}
+.forum-post-modal-btn.cancel{background:rgba(0,0,0,.06);color:#333333}
+.forum-post-modal-btn.publish{background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff}
+/* World selector */
+.forum-world-selector{flex:1;margin:0 12px}
+.forum-world-select{width:100%;padding:6px 10px;border:1px solid rgba(0,0,0,.1);border-radius:20px;font-size:.85rem;background:#fff;color:#333333;outline:none;cursor:pointer}
+.forum-world-select:focus{border-color:#FF6B9D}
+/* Forum Page (as bottom-nav page) */
+#forumPage{padding:0;overflow:hidden;display:none;flex-direction:column;height:calc(100vh - 73px)}
+#forumPage.active{display:flex}
+.forum-page-container{display:flex;flex-direction:column;height:100%;background:#FFF5F7;position:relative}
+.forum-page-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,.06)}
+.forum-page-title{font-size:1.15rem;font-weight:800;color:#333333}
+.forum-page-actions{display:flex;gap:8px}
+.forum-tabs-bar{display:flex;position:sticky;top:57px;z-index:9;background:rgba(255,255,255,.92);backdrop-filter:blur(20px);border-bottom:1px solid rgba(0,0,0,.06)}
+#forumPage .forum-post-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px;padding-bottom:80px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start}
+#forumPage .forum-fab{position:absolute;bottom:20px;right:20px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff;border:0;font-size:1.6rem;cursor:pointer;z-index:10;display:grid;place-items:center;box-shadow:0 4px 16px rgba(255,107,157,.4);transition:transform .2s}
+#forumPage .forum-fab:active{transform:scale(.92)}
+/* Forum Homepage */
+.forum-home{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:80px}
+.forum-home.hidden{display:none}
+.forum-hero{margin:12px;padding:24px 20px;background:linear-gradient(135deg,#FF6B9D 0%,#9b8cff 50%,#FFB6C1 100%);border-radius:20px;color:#fff;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(255,107,157,.25)}
+.forum-hero::after{content:'';position:absolute;top:-30px;right:-20px;width:120px;height:120px;background:rgba(255,255,255,.1);border-radius:50%}
+.forum-hero h3{font-size:1.5rem;font-weight:800;margin:0 0 8px;letter-spacing:1px}
+.forum-hero p{font-size:.85rem;opacity:.9;margin:0;line-height:1.5}
+.forum-hero-badge{display:inline-block;margin-top:12px;padding:4px 12px;background:rgba(255,255,255,.2);border-radius:20px;font-size:.75rem;font-weight:600}
+.forum-section-title{font-size:1rem;font-weight:700;color:#333333;margin:20px 16px 10px;display:flex;align-items:center;justify-content:space-between}
+.forum-section-title span:last-child{font-size:.78rem;color:#FF6B9D;font-weight:600;cursor:pointer}
+.forum-board-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px}
+.forum-board-card{padding:16px 14px;border-radius:16px;cursor:pointer;transition:transform .15s;position:relative;overflow:hidden;border:0;text-align:left}
+.forum-board-card:active{transform:scale(.96)}
+.forum-board-card h4{font-size:.95rem;font-weight:700;margin:0 0 4px;color:#fff}
+.forum-board-card p{font-size:.72rem;opacity:.85;margin:0;color:#fff;line-height:1.4}
+.forum-board-icon{font-size:1.6rem;margin-bottom:6px;display:block}
+.forum-board-card.tide{background:linear-gradient(135deg,#667eea,#764ba2)}
+.forum-board-card.deep{background:linear-gradient(135deg,#2c5364,#0f9b8e)}
+.forum-board-card.dark{background:linear-gradient(135deg,#434343,#333333)}
+.forum-board-card.wave{background:linear-gradient(135deg,#f093fb,#f5576c)}
+.forum-board-card.evening{background:linear-gradient(135deg,#fa709a,#fee140)}
+.forum-hot-list{padding:0 12px;display:flex;flex-direction:column;gap:8px}
+.forum-hot-item{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fff;border-radius:14px;cursor:pointer;transition:transform .15s;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.forum-hot-item:active{transform:scale(.98)}
+.forum-hot-rank{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;font-size:.75rem;font-weight:800;color:#fff;flex-shrink:0}
+.forum-hot-rank.r1{background:#ff6b6b}.forum-hot-rank.r2{background:#ffa94d}.forum-hot-rank.r3{background:#ffd43b;color:#333333}
+.forum-hot-rank.r4,.forum-hot-rank.r5{background:#dee2e6;color:#333333}
+.forum-hot-text{flex:1;min-width:0}
+.forum-hot-text h5{font-size:.82rem;font-weight:600;margin:0 0 2px;color:#333333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.forum-hot-text p{font-size:.72rem;color:#999;margin:0}
+.forum-hot-likes{font-size:.72rem;color:#ff6b6b;font-weight:600;flex-shrink:0}
+.forum-rules-card{margin:12px;padding:14px 16px;background:rgba(255,107,157,.06);border-radius:14px;border:1px solid rgba(255,107,157,.12)}
+.forum-rules-card h4{font-size:.85rem;font-weight:700;color:#FF6B9D;margin:0 0 6px}
+.forum-rules-card p{font-size:.76rem;color:#999;margin:0;line-height:1.6}
+.forum-enter-btn{display:block;margin:16px auto;padding:12px 48px;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff;border:0;border-radius:30px;font-size:.95rem;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(255,107,157,.35);transition:transform .15s}
+.forum-enter-btn:active{transform:scale(.96)}
+.forum-feed-wrap.hidden{display:none}
+/* DM (Direct Messages) */
+.dm-role-bar{display:flex;gap:8px;padding:10px 12px;overflow-x:auto;background:rgba(255,255,255,.92);border-bottom:1px solid rgba(0,0,0,.06)}
+.dm-role-chip{flex-shrink:0;padding:6px 14px;border-radius:20px;background:rgba(255,107,157,.1);color:#FF6B9D;font-size:.82rem;font-weight:600;cursor:pointer;border:0;white-space:nowrap}
+.dm-role-chip.active{background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff}
+.dm-chat-list{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.dm-bubble{max-width:75%;padding:10px 14px;border-radius:16px;font-size:.88rem;line-height:1.5;word-break:break-word}
+.dm-bubble.from-user{align-self:flex-end;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff;border-bottom-right-radius:4px}
+.dm-bubble.from-role{align-self:flex-start;background:#fff;color:#333333;border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.dm-bubble .dm-time{font-size:.7rem;opacity:.6;margin-top:2px}
+.dm-input-wrap{border-top:1px solid rgba(0,0,0,.06)}
+
+/* ===== Social Forum Overlay (小红书粉色治愈风格) ===== */
+.sf-overlay{position:fixed;inset:0;z-index:200;background:#FFF5F7;display:none;flex-direction:column;max-width:430px;margin:0 auto}
+.sf-overlay.active{display:flex}
+.sf-nav-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,.92);backdrop-filter:blur(18px);border-bottom:1px solid rgba(0,0,0,.06);position:sticky;top:0;z-index:10}
+.sf-nav-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);border:0;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700}
+.sf-nav-title{flex:1;text-align:center;color:#333333;font-size:17px;font-weight:700}
+.sf-nav-actions{display:flex;gap:6px}
+.sf-nav-btn{width:34px;height:34px;border-radius:50%;background:rgba(255,107,157,.1);color:#333333;border:0;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.sf-nav-btn:active{background:rgba(255,107,157,.2)}
+.sf-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.sf-view{display:none}
+.sf-view.active{display:block}
+.sf-sub-tabs{display:flex;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);position:sticky;top:0;z-index:5;border-bottom:1px solid rgba(0,0,0,.06)}
+.sf-sub-tab{flex:1;text-align:center;padding:12px 0;color:#999;font-size:14px;font-weight:600;cursor:pointer;position:relative;transition:color .2s}
+.sf-sub-tab.active{color:#333333}
+.sf-sub-tab.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:36px;height:3px;border-radius:2px;background:#FF6B9D}
+.sf-timeline{padding:0}
+.sf-loading{text-align:center;padding:40px 20px;color:#999;font-size:14px}
+.sf-generate-btn,.df-generate-btn{display:block;margin:30px auto;padding:14px 36px;border:0;border-radius:999px;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff;font-size:.95rem;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(255,107,157,.3);transition:transform .15s}
+.sf-generate-btn:active,.df-generate-btn:active{transform:scale(.96)}
+.sf-generate-btn .cost,.df-generate-btn .cost{opacity:.8;font-size:.8rem;font-weight:400;margin-left:4px}
+.sf-refresh-btn,.df-refresh-btn{display:block;margin:16px auto;padding:10px 28px;border:1px solid #FF6B9D;border-radius:999px;background:transparent;color:#FF6B9D;font-size:.85rem;font-weight:600;cursor:pointer;transition:transform .15s}
+.sf-refresh-btn:active,.df-refresh-btn:active{transform:scale(.96)}
+.sf-post{padding:12px 14px;border-bottom:1px solid rgba(0,0,0,.06);cursor:pointer;transition:background .15s}
+.sf-post:active{background:rgba(255,107,157,.03)}
+.sf-post-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.sf-post-avatar{width:42px;height:42px;border-radius:50%;flex-shrink:0;object-fit:cover}
+.sf-post-avatar-placeholder{width:42px;height:42px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700}
+.sf-post-info{flex:1;min-width:0}
+.sf-post-name{color:#333333;font-size:14px;font-weight:700;display:flex;align-items:center;gap:4px}
+.sf-post-name .sf-verified{color:#FF6B9D;font-size:12px}
+.sf-post-handle{color:#999999;font-size:12px}
+.sf-post-time{color:#999999;font-size:12px;margin-left:4px}
+.sf-post-text{color:#333333;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word;margin-bottom:8px}
+.sf-post-media{border-radius:14px;overflow:hidden;margin-bottom:8px;max-height:300px}
+.sf-post-media-gradient{height:160px;border-radius:14px;margin-bottom:8px}
+.sf-post-actions{display:flex;justify-content:space-between;max-width:320px}
+.sf-post-action{display:flex;align-items:center;gap:5px;color:#999;font-size:13px;cursor:pointer;transition:color .2s}
+.sf-post-action:active{color:#FF6B9D}
+.sf-post-action.liked{color:#e74c3c}
+.sf-fab{position:absolute;bottom:72px;right:16px;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff;border:0;font-size:24px;cursor:pointer;z-index:10;display:grid;place-items:center;box-shadow:0 4px 16px rgba(255,107,157,.4);transition:transform .2s}
+.sf-fab:active{transform:scale(.92)}
+.sf-bottom-nav{display:flex;background:rgba(255,255,255,.95);backdrop-filter:blur(18px);border-top:1px solid rgba(0,0,0,.06);padding:6px 0 calc(6px + var(--safe-bottom,0px))}
+.sf-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;color:#999;font-size:10px;cursor:pointer;padding:4px 0;transition:color .2s}
+.sf-tab.active{color:#FF6B9D}
+.sf-tab span{font-size:10px}
+.sf-side-menu{position:fixed;top:0;left:0;bottom:0;width:280px;background:#FFF5F7;z-index:210;transform:translateX(-100%);transition:transform .3s ease;display:flex;flex-direction:column}
+.sf-side-menu.open{transform:translateX(0)}
+.sf-side-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:205;display:none}
+.sf-side-overlay.active{display:block}
+.sf-menu-header{padding:24px 20px 16px;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff}
+.sf-menu-list{flex:1;overflow-y:auto;padding:8px 0}
+.sf-menu-item{padding:14px 20px;color:#333333;font-size:15px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background .15s}
+.sf-menu-item:active{background:rgba(255,107,157,.08)}
+.sf-post-modal{position:fixed;inset:0;z-index:220;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center}
+.sf-post-modal.active{display:flex}
+.sf-post-modal-content{width:100%;max-width:430px;background:#ffffff;border-radius:20px 20px 0 0;padding:16px;animation:sfSlideUp .3s ease}
+@keyframes sfSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sf-post-modal-content textarea{width:100%;min-height:120px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:14px;padding:12px;color:#333;font:inherit;font-size:14px;resize:vertical;outline:none}
+.sf-post-modal-content textarea:focus{border-color:#FF6B9D}
+.sf-post-modal-actions{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+.sf-btn{padding:8px 20px;border-radius:999px;border:0;cursor:pointer;font-size:14px;font-weight:600}
+.sf-btn.cancel{background:rgba(0,0,0,.06);color:#666}
+.sf-btn.publish{background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff}
+/* ---- followed roles section ---- */
+.sf-followed-section{padding:10px 14px 6px;background:#fff;border-bottom:1px solid rgba(0,0,0,.06)}
+.sf-followed-empty{color:#999;font-size:13px;text-align:center;padding:4px 0}
+.sf-followed-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:rgba(255,107,157,.05);margin-bottom:4px}
+.sf-followed-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0}
+.sf-followed-name{flex:1;color:#333;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sf-followed-remove{width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.06);color:#999;font-size:16px;line-height:1;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.sf-followed-remove:active{background:rgba(255,107,157,.2)}
+.sf-followed-add-btn{width:100%;padding:8px;border-radius:10px;border:1px dashed rgba(255,107,157,.4);background:transparent;color:#FF6B9D;font-size:13px;font-weight:600;cursor:pointer;margin-top:6px}
+.sf-followed-add-btn:active{background:rgba(255,107,157,.08)}
+/* ---- role picker overlay ---- */
+.sf-role-picker-overlay{position:fixed;inset:0;z-index:230;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;padding:24px}
+.sf-role-picker-overlay.active{display:flex}
+.sf-role-picker-card{width:100%;max-width:340px;max-height:70vh;background:#fff;border-radius:20px;overflow:hidden;display:flex;flex-direction:column}
+.sf-role-picker-title{font-size:17px;font-weight:800;color:#3a2230;text-align:center;padding:16px;border-bottom:1px solid rgba(0,0,0,.06)}
+.sf-role-picker-list{flex:1;overflow-y:auto;padding:10px}
+.sf-role-picker-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;cursor:pointer;transition:background .12s}
+.sf-role-picker-item:active{background:rgba(255,107,157,.1)}
+.sf-role-picker-item.followed{background:rgba(255,107,157,.06)}
+.sf-role-picker-avatar{width:40px;height:40px;border-radius:50%;flex-shrink:0}
+.sf-role-picker-name{flex:1;color:#333;font-size:14px;font-weight:600}
+.sf-role-picker-check{color:#FF6B9D;font-size:18px;font-weight:700}
+.sf-role-picker-close-btn{width:100%;padding:12px;border:0;border-top:1px solid rgba(0,0,0,.06);background:#fff;color:#666;font-size:15px;font-weight:600;cursor:pointer}
+.sf-role-picker-close-btn:active{background:rgba(0,0,0,.04)}
+.sf-detail-overlay{position:fixed;inset:0;z-index:210;background:#FFF5F7;display:none;flex-direction:column;max-width:430px;margin:0 auto}
+.sf-detail-overlay.active{display:flex}
+.sf-detail-header{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid rgba(0,0,0,.06);position:sticky;top:0;background:#ffffff;backdrop-filter:blur(18px);z-index:5}
+.sf-detail-header span{color:#333333;font-size:16px;font-weight:700}
+.sf-detail-body{flex:1;overflow-y:auto;padding:14px}
+.sf-comment-bar{display:flex;gap:8px;padding:10px 14px;background:rgba(255,255,255,.95);backdrop-filter:blur(18px);border-top:1px solid rgba(0,0,0,.06)}
+.sf-comment-bar input{flex:1;padding:10px 14px;border-radius:999px;background:#fff;border:1px solid rgba(0,0,0,.1);color:#333;font:inherit;font-size:14px;outline:none}
+.sf-comment-bar input:focus{border-color:#FF6B9D}
+.sf-comment-bar button{padding:8px 16px;border-radius:999px;background:#FF6B9D;color:#fff;border:0;font-weight:600;cursor:pointer}
+.sf-comment{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+.sf-comment-avatar{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+.sf-comment-body{flex:1}
+.sf-comment-name{color:#333333;font-size:13px;font-weight:600}
+.sf-comment-text{color:#333333;font-size:14px;line-height:1.5;margin-top:2px}
+.sf-comment-time{color:#999999;font-size:11px;margin-top:2px}
+.sf-trend-card{margin:12px 14px;padding:14px;border-radius:16px;background:rgba(255,107,157,.04);border:1px solid rgba(255,107,157,.1)}
+.sf-trend-title{color:#999;font-size:13px;font-weight:600;margin-bottom:10px}
+.sf-trend-item{padding:8px 0;border-bottom:1px solid rgba(0,0,0,.06);cursor:pointer}
+.sf-trend-item:last-child{border:0}
+.sf-trend-rank{color:#999;font-size:12px;font-weight:700}
+.sf-trend-tag{color:#333333;font-size:14px;font-weight:700;margin:2px 0}
+.sf-trend-count{color:#999;font-size:12px}
+.sf-profile-header{padding:20px 14px;background:linear-gradient(135deg,#FF6B9D,#f8a4c8)}
+.sf-profile-body{padding:0 14px}
+.sf-profile-stat{display:flex;gap:20px;padding:12px 0}
+.sf-profile-stat-item{text-align:center}
+.sf-profile-stat-item .num{color:#333333;font-size:18px;font-weight:800}
+.sf-profile-stat-item .label{color:#999999;font-size:12px}
+.sf-empty{text-align:center;padding:60px 20px;color:#999;font-size:14px}
+
+/* ===== Doujin Forum Overlay (小红书粉色治愈风格) ===== */
+.df-overlay{position:fixed;inset:0;z-index:200;background:#FFF5F7;display:none;flex-direction:column;max-width:430px;margin:0 auto}
+.df-overlay.active{display:flex}
+.df-top-header{background:#fff;border-bottom:1px solid rgba(0,0,0,.06);position:sticky;top:0;z-index:10}
+.df-header-top{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.df-nav-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);border:0;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;overflow:hidden}
+.df-logo{font-size:17px;font-weight:700;color:#333;flex:1}
+.df-header-actions{display:flex;gap:6px}
+.df-header-btn{width:32px;height:32px;border-radius:50%;background:rgba(255,107,157,.1);color:#333;border:0;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.df-header-btn:active{background:rgba(255,107,157,.2)}
+.df-tag-nav{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:0 10px 8px}
+.df-tag-nav::-webkit-scrollbar{display:none}
+.df-tag-nav-content{display:flex;gap:6px}
+.df-tag-item{padding:4px 14px;border-radius:999px;background:#f0f0f0;color:#666;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;transition:all .2s}
+.df-tag-item.active{background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff}
+.df-pages{flex:1;overflow:hidden;position:relative}
+.df-page{display:none;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.df-page.active{display:block}
+.df-content{padding:10px}
+.df-loading{text-align:center;padding:40px 20px;color:#999;font-size:14px}
+.df-work-card{background:#fff;border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.05);cursor:pointer;transition:transform .15s}
+.df-work-card:active{transform:scale(.99)}
+.df-work-cover{height:180px;position:relative;overflow:hidden}
+.df-work-cover-gradient{width:100%;height:100%}
+.df-work-cover-overlay{position:absolute;bottom:0;left:0;right:0;padding:12px;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+.df-work-cover-overlay h4{color:#fff;font-size:15px;margin:0;0;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.df-work-info{padding:12px 14px}
+.df-work-author{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.df-work-author-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.df-work-author-name{color:#666;font-size:13px;font-weight:600}
+.df-work-title{color:#333;font-size:15px;font-weight:700;margin-bottom:4px;line-height:1.4}
+.df-work-excerpt{color:#888;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.df-work-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.df-work-tag{padding:2px 8px;border-radius:4px;background:rgba(255,107,157,.1);color:#FF6B9D;font-size:11px;font-weight:600}
+.df-work-meta{display:flex;gap:14px;margin-top:8px;color:#aaa;font-size:12px}
+.df-work-meta span{display:flex;align-items:center;gap:3px}
+.df-bottom-nav{display:flex;background:#fff;border-top:1px solid rgba(0,0,0,.06);padding:4px 0 calc(4px + var(--safe-bottom,0px))}
+.df-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;color:#999;font-size:10px;cursor:pointer;padding:4px 0;transition:color .2s}
+.df-tab.active{color:#FF6B9D}
+.df-tab span{font-size:10px}
+.df-tab.df-publish-tab .df-tab-icon{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;margin-top:-10px;box-shadow:0 2px 8px rgba(255,107,157,.3)}
+.df-detail-overlay{position:fixed;inset:0;z-index:210;background:#fff;display:none;flex-direction:column;max-width:430px;margin:0 auto}
+.df-detail-overlay.active{display:flex}
+.df-detail-header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(0,0,0,.06);position:sticky;top:0;background:#fff;z-index:5}
+.df-detail-header span{color:#333;font-size:16px;font-weight:700}
+.df-detail-body{flex:1;overflow-y:auto;padding:16px 14px}
+.df-detail-title{font-size:20px;font-weight:800;color:#222;margin-bottom:10px;line-height:1.3}
+.df-detail-author{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.df-detail-author-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+.df-detail-author-info{flex:1}
+.df-detail-author-name{color:#333;font-size:14px;font-weight:700}
+.df-detail-author-time{color:#aaa;font-size:12px}
+.df-detail-content{color:#444;font-size:15px;line-height:1.8;white-space:pre-wrap;word-break:break-word}
+.df-detail-tags{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0}
+.df-detail-author-words{margin-top:16px;padding:12px;background:#f9f9f9;border-radius:10px;color:#888;font-size:13px;line-height:1.6}
+.df-comment-section{border-top:1px solid rgba(0,0,0,.06);background:#f9f9f9}
+.df-comments{padding:10px 14px;max-height:300px;overflow-y:auto}
+.df-comment{display:flex;gap:8px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.df-comment-avatar{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700}
+.df-comment-body{flex:1}
+.df-comment-name{color:#555;font-size:13px;font-weight:600}
+.df-comment-text{color:#666;font-size:13px;line-height:1.5;margin-top:2px}
+.df-comment-form{display:flex;gap:8px;padding:10px 14px;background:#fff;border-top:1px solid rgba(0,0,0,.06)}
+.df-comment-form input{flex:1;padding:8px 12px;border-radius:999px;background:#f5f5f5;border:1px solid rgba(0,0,0,.06);color:#333;font:inherit;font-size:13px;outline:none}
+.df-comment-form button{padding:6px 14px;border-radius:999px;background:#FF6B9D;color:#fff;border:0;font-weight:600;cursor:pointer;font-size:13px}
+.df-publish-form{padding:16px 14px}
+.df-input{width:100%;padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,.1);background:#fff;color:#333;font:inherit;font-size:14px;outline:none;margin-bottom:10px}
+.df-input:focus{border-color:#FF6B9D}
+.df-textarea{width:100%;min-height:200px;padding:12px;border-radius:12px;border:1px solid rgba(0,0,0,.1);background:#fff;color:#333;font:inherit;font-size:14px;resize:vertical;outline:none;margin-bottom:10px;line-height:1.6}
+.df-textarea:focus{border-color:#FF6B9D}
+.df-btn-primary{width:100%;padding:14px;border-radius:12px;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);color:#fff;border:0;font-size:15px;font-weight:700;cursor:pointer;transition:transform .15s}
+.df-btn-primary:active{transform:scale(.98)}
+.df-ranking-tabs{display:flex;background:#fff;border-bottom:1px solid rgba(0,0,0,.06)}
+.df-ranking-tab{flex:1;text-align:center;padding:12px 0;color:#999;font-size:14px;font-weight:600;cursor:pointer;position:relative}
+.df-ranking-tab.active{color:#FF6B9D}
+.df-ranking-tab.active::after{content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:30px;height:3px;border-radius:2px;background:#FF6B9D}
+.df-rank-item{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border-bottom:1px solid rgba(0,0,0,.04);cursor:pointer}
+.df-rank-num{width:28px;text-align:center;font-size:18px;font-weight:800;color:#ccc}
+.df-rank-item:nth-child(1) .df-rank-num{color:#e74c3c}
+.df-rank-item:nth-child(2) .df-rank-num{color:#e67e22}
+.df-rank-item:nth-child(3) .df-rank-num{color:#f1c40f}
+.df-profile{padding:16px 14px}
+.df-profile-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.df-profile-avatar{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#FF6B9D,#FFB6C1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:700}
+.df-profile-info h3{margin:0;font-size:18px;color:#333}
+.df-profile-info p{margin:4px 0 0;font-size:13px;color:#999}
+.df-profile-stats{display:flex;gap:20px;padding:12px 0;border-top:1px solid rgba(0,0,0,.06);border-bottom:1px solid rgba(0,0,0,.06)}
+.df-profile-stat{text-align:center}
+.df-profile-stat .num{color:#333;font-size:18px;font-weight:800}
+.df-profile-stat .label{color:#999;font-size:12px}
+
+</style>
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <header class="top-bar">
+        <div>
+          <p class="eyebrow">Mochi-phone</p>
+          <h1 id="pageTitle">角色聊天</h1>
+        </div>
+        <button id="beansBadge" class="beans-badge" type="button">豆子 0</button>
+      </header>
+
+      <main class="page-stack">
+        <section id="chatPage" class="page active">
+          <div id="roleSwitcher" class="role-switcher"></div>
+          <div id="chatContainer" class="chat-container">
+            <div id="messageList" class="message-list"></div>
+          </div>
+          <div class="chat-zone-tabs" id="chatZoneTabs">
+            <div class="chat-zone-tab active" data-chat-zone="online">线上</div>
+            <div class="chat-zone-tab" data-chat-zone="offline">线下</div>
+          </div>
+          <div class="chat-offline-indicator" id="chatOfflineIndicator" style="display:none">
+            <span class="offline-dot"></span>
+            <span>线下模式 - 消息不会发送给AI</span>
+          </div>
+          <form id="chatForm" class="chat-input-bar">
+            <textarea id="messageInput" rows="1" placeholder="输入想对角色说的话..."></textarea>
+            <button id="sendButton" type="submit">发送</button>
+            <button id="replyButton" type="button" class="chat-reply-btn" disabled>AI回复</button>
+            <button type="button" class="chat-plus-btn" id="chatPlusBtn" title="更多">&#43;</button>
+          </form>
+          <div class="chat-plus-panel" id="chatPlusPanel" style="display:none">
+            <div class="chat-plus-grid">
+              <div class="chat-plus-item" id="chatPlusImg">
+                <div class="chat-plus-icon">&#128247;</div>
+                <div class="chat-plus-label">图片</div>
+              </div>
+              <div class="chat-plus-item" id="chatPlusFile">
+                <div class="chat-plus-icon">&#128206;</div>
+                <div class="chat-plus-label">文件</div>
+              </div>
+              <div class="chat-plus-item" id="chatPlusRedPacket">
+                <div class="chat-plus-icon">&#129529;</div>
+                <div class="chat-plus-label">红包</div>
+              </div>
+            </div>
+          </div>
+          <input type="file" id="chatImgInput" accept="image/*" style="display:none" />
+          <input type="file" id="chatFileInput" style="display:none" />
+        </section>
+
+        <section id="rolesPage" class="page">
+          <div class="section-header">
+            <h2>我的角色</h2>
+            <button id="newRoleButton" class="primary-small" type="button">新建</button>
+          </div>
+          <div id="myRolesList" class="card-list"></div>
+        </section>
+
+        <section id="communityPage" class="page">
+          <div class="section-header">
+            <h2>人设社区</h2>
+            <button id="communityCreateBtn" class="primary-small" type="button">+ 创建人设</button>
+          </div>
+          <div class="community-tabs" style="display:flex;gap:8px;padding:8px 16px;overflow-x:auto;border-bottom:1px solid #eee">
+            <button class="comm-tab active" data-comm-tab="official" type="button" style="padding:6px 16px;border:none;border-radius:20px;background:#FF6B9D;color:#fff;font-size:13px;cursor:pointer;white-space:nowrap">官方人设</button>
+            <button class="comm-tab" data-comm-tab="user" type="button" style="padding:6px 16px;border:1px solid #ddd;border-radius:20px;background:#fff;color:#666;font-size:13px;cursor:pointer;white-space:nowrap">用户分享</button>
+            <button class="comm-tab" data-comm-tab="mine" type="button" style="padding:6px 16px;border:1px solid #ddd;border-radius:20px;background:#fff;color:#666;font-size:13px;cursor:pointer;white-space:nowrap">我的人设</button>
+          </div>
+          <div class="search-row">
+            <input id="communitySearch" type="search" placeholder="搜索人设名称或关键词" />
+            <button id="communitySearchButton" type="button">搜索</button>
+          </div>
+          <div id="communityList" class="waterfall-list"></div>
+        </section>
+
+
+
+        <section id="phonePage" class="page">
+          <div class="phone-shell">
+            <div class="phone-lock">
+              <div id="phoneClock" class="phone-lock-time">--:--</div>
+              <div id="phoneDate" class="phone-lock-date">今天</div>
+            </div>
+            <div class="phone-widget-grid">
+              <div class="phone-widget"><strong id="phoneActiveRole">当前角色</strong><span>联系人 / 关系 / 回忆</span></div>
+              <div class="phone-widget"><strong id="phoneMemoryCount">0</strong><span>已沉淀回忆</span></div>
+            </div>
+            <div class="phone-app-grid eve-style-apps">
+              <button class="phone-app" data-phone-app="socialForum" type="button"><i class="phone-app-icon" style="background:linear-gradient(135deg,#FF6B9D,#FFB6C1)">💬</i><span>社交</span></button>
+              <button class="phone-app" data-phone-app="doujinForum" type="button"><i class="phone-app-icon" style="background:linear-gradient(135deg,#FF6B9D,#FFB6C1)">✎</i><span>同人</span></button>
+              <button class="phone-app" data-phone-app="worldbook" type="button"><i class="phone-app-icon">🌐</i><span>世界书</span></button>
+              <button class="phone-app" data-phone-app="anniversary" type="button"><i class="phone-app-icon">♡</i><span>纪念日</span></button>
+            </div>
+            <div id="phoneAppPanel" class="phone-app-panel hidden"></div>
+          </div>
+        </section>
+
+        <section id="memoryPage" class="page">
+          <div class="section-header">
+            <h2>记忆系统</h2>
+            <button id="refreshMemoryButton" class="primary-small" type="button">刷新</button>
+          </div>
+          <div class="panel">
+            <h3>新增记忆</h3>
+            <p class="muted">手动记忆会长期保留；自动记忆来自对话，删除对应对话时会自动清理。</p>
+            <label>记忆范围<select id="memoryRoleSelect"></select></label>
+            <label>记忆类型<select id="memoryTypeSelect">
+              <option>用户资料</option>
+              <option>角色关系</option>
+              <option>事件</option>
+              <option>偏好</option>
+              <option>禁忌</option>
+              <option>剧情</option>
+            </select></label>
+            <label>记忆内容<textarea id="memoryContentInput" rows="4" placeholder="例如：用户喜欢被叫阿宁，不喜欢被叫宝宝。"></textarea></label>
+            <button id="saveMemoryButton" class="primary-small" type="button">保存记忆</button>
+          </div>
+          <div class="panel">
+            <h3>我们的回忆时间线</h3>
+            <div id="timelineList" class="timeline-list"></div>
+          </div>
+          <div class="panel">
+            <h3>已保存的记忆</h3>
+            <div id="memoryList" class="memory-list"></div>
+          </div>
+        </section>
+
+        <section id="profilePage" class="page">
+          <div class="profile-header" id="profileHeader">
+            <img class="profile-header-avatar" id="profileHeaderAvatar" alt="" />
+            <div class="profile-header-info">
+              <div class="profile-header-name" id="profileHeaderName">体验用户</div>
+              <div class="profile-header-bio" id="profileHeaderBio"></div>
+            </div>
+          </div>
+
+          <div class="profile-card">
+            <label class="avatar-uploader">
+              <img id="userAvatarPreview" alt="用户头像" />
+              <input id="userAvatarInput" type="file" accept="image/*" />
+              <span>更换头像</span>
+            </label>
+            <label>昵称<input id="userNicknameInput" type="text" maxlength="24" /></label>
+            <label>个人人设<textarea id="userBioInput" rows="4" placeholder="描述你自己的外貌、性格、背景等人设信息"></textarea></label>
+            <label>人设关系<textarea id="userRelationsInput" rows="3" placeholder="描述你与角色之间的关系设定，例如：与沈墨言是青梅竹马，互为欢喜冤家；表面互怼实则暗恋对方"></textarea></label>
+            <button id="saveProfileButton" type="button">保存资料</button>
+          </div>
+
+          <div class="panel">
+            <h3>豆子资产</h3>
+            <strong id="beansBalance" class="balance">0</strong>
+            <div id="rechargePackages" class="package-grid"></div>
+          </div>
+
+          <div class="panel">
+            <h3>消费明细</h3>
+            <div id="transactionList" class="transaction-list"></div>
+          </div>
+
+          <div class="panel settings-list">
+            <button id="openMessagesBtn" type="button">私信</button>
+            <button data-costume-tab="page" type="button">自定义页面 UI</button>
+            <button data-costume-tab="bubble" type="button">自定义聊天气泡</button>
+            <button data-costume-tab="wallpaper" type="button">自定义聊天壁纸</button>
+            <button id="exportDataButton" type="button">导出数据备份</button>
+            <button id="importDataButton" type="button">导入数据恢复</button>
+            <input id="importDataInput" type="file" accept="application/json,.json" hidden />
+            <button id="clearCacheButton" type="button">清空本地缓存</button>
+          </div>
+        </section>
+
+        <!-- Direct Messages Overlay -->
+        <div id="dmOverlay" class="forum-overlay">
+          <div class="forum-overlay-header">
+            <span class="forum-overlay-title">私信</span>
+            <div class="forum-overlay-actions">
+              <button class="forum-overlay-btn" id="dmCloseBtn" type="button">×</button>
+            </div>
+          </div>
+          <div class="dm-role-bar" id="dmRoleBar"></div>
+          <div class="dm-chat-list" id="dmChatList">
+            <div class="forum-loading">选择一个角色开始私信</div>
+          </div>
+          <div class="forum-comment-input-wrap dm-input-wrap">
+            <input class="forum-comment-input" id="dmInput" placeholder="发送私信..." />
+            <button class="forum-comment-send" id="dmSendBtn" type="button">发送</button>
+          </div>
+        </div>
+
+        <section id="costumePage" class="page">
+          <div class="tabs">
+            <button class="active" data-costume-mode="page" type="button">页面 UI</button>
+            <button data-costume-mode="bubble" type="button">聊天气泡</button>
+            <button data-costume-mode="wallpaper" type="button">壁纸</button>
+          </div>
+          <div id="costumeEditorWrap" class="costume-editor"></div>
+        </section>
+
+        <section id="novelGamePage" class="page">
+          <div id="novelGameContainer" class="novel-container">
+            <div id="novelGameMain">
+              <div class="novel-tabs">
+                <button class="active" data-novel-tab="scripts" type="button">剧本库</button>
+                <button data-novel-tab="saves" type="button">我的存档</button>
+              </div>
+              <div id="novelGameContent">
+                <div class="novel-loading"><div class="novel-loading-spinner"></div>加载中...</div>
+              </div>
+            </div>
+            <div id="novelGameStory" class="novel-story" style="display:none">
+              <div class="novel-phone-panel" id="novelPhonePanel"></div>
+              <div class="novel-story-header">
+                <button class="novel-btn secondary small" id="novelStoryBack" type="button">← 返回</button>
+                <span class="novel-story-time" id="novelTimeBadge">第1天</span>
+                <span class="round-badge" id="novelRoundBadge">第1轮</span>
+                <button class="novel-btn small" id="novelSaveBtn" type="button">保存</button>
+              </div>
+              <div class="novel-story-scroll" id="novelStoryScroll">
+                <div class="novel-story-content" id="novelStoryContent"></div>
+              </div>
+              <div class="novel-action-panel" id="novelActionPanel">
+                <div class="novel-actions" id="novelActions"></div>
+                <div class="novel-custom-action">
+                  <input type="text" id="novelCustomActionInput" placeholder="输入自定义行动..." />
+                  <button class="novel-btn" id="novelCustomActionBtn" type="button">执行</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Forum page removed: forums are now overlays in phone interface -->
+      </main>
+
+      <!-- ===== Social Forum Overlay (Twitter/Weibo style) ===== -->
+      <div id="socialForumOverlay" class="sf-overlay">
+        <div class="sf-nav-bar">
+          <button class="sf-nav-avatar" id="sfNavAvatar" type="button"></button>
+          <div class="sf-nav-title">论坛</div>
+          <div class="sf-nav-actions">
+            <button class="sf-nav-btn" id="sfRefreshBtn" type="button">⟳</button>
+            <button class="sf-nav-btn" id="sfCloseBtn" type="button">✕</button>
+          </div>
+        </div>
+        <div class="sf-content" id="sfContent">
+          <div class="sf-view active" id="sfHomeView">
+            <div class="sf-sub-tabs">
+              <div class="sf-sub-tab active" data-sf-tab="following">关注</div>
+              <div class="sf-sub-tab" data-sf-tab="recommended">推荐</div>
+              <div class="sf-sub-tab" data-sf-tab="gossip">八卦</div>
+            </div>
+            <div class="sf-timeline" id="sfTimeline"><div class="sf-loading">加载中...</div></div>
+          </div>
+          <div class="sf-view" id="sfSearchView">
+            <div class="sf-search-bar"><input type="text" id="sfSearchInput" placeholder="搜索话题、用户..." /></div>
+            <div class="sf-trends" id="sfTrends"></div>
+          </div>
+          <div class="sf-view" id="sfNotifView">
+            <div class="sf-timeline" id="sfNotifList"><div class="sf-loading">暂无通知</div></div>
+          </div>
+          <div class="sf-view" id="sfMeView">
+            <div class="sf-profile-header"></div>
+            <div class="sf-profile-body" id="sfProfileBody"></div>
+          </div>
+        </div>
+        <button class="sf-fab" id="sfFab" type="button">+</button>
+        <div class="sf-bottom-nav">
+          <div class="sf-tab active" data-sf-view="me">🏠<span>主页</span></div>
+          <div class="sf-tab" data-sf-view="search">🔍<span>搜索</span></div>
+          <div class="sf-tab" data-sf-view="notifications">🔔<span>通知</span></div>
+          <div class="sf-tab" data-sf-view="me">👤<span>我的</span></div>
+        </div>
+      </div>
+      <div id="sfSideMenu" class="sf-side-menu">
+        <div class="sf-menu-header" id="sfMenuHeader"></div>
+        <div class="sf-menu-list" id="sfMenuList"></div>
+      </div>
+      <div id="sfSideOverlay" class="sf-side-overlay"></div>
+      <div id="sfPostModal" class="sf-post-modal">
+        <div class="sf-post-modal-content">
+          <textarea id="sfPostInput" placeholder="有什么新鲜事？"></textarea>
+          <div class="sf-post-modal-actions">
+            <button class="sf-btn cancel" id="sfPostCancel" type="button">取消</button>
+            <button class="sf-btn publish" id="sfPostPublish" type="button">发布</button>
+          </div>
+        </div>
+      </div>
+      <div id="sfRolePickerOverlay" class="sf-role-picker-overlay"></div>
+      <div id="sfDetailOverlay" class="sf-detail-overlay">
+        <div class="sf-detail-header">
+          <button class="sf-nav-btn" id="sfDetailBack" type="button">←</button>
+          <span>帖子详情</span>
+        </div>
+        <div class="sf-detail-body" id="sfDetailBody"></div>
+        <div class="sf-comment-bar">
+          <input id="sfCommentInput" placeholder="写条评论..." />
+          <button id="sfCommentSend" type="button">发送</button>
+        </div>
+      </div>
+
+      <!-- ===== Doujin Forum Overlay (LOFTER style) ===== -->
+      <div id="doujinForumOverlay" class="df-overlay">
+        <div class="df-top-header">
+          <div class="df-header-top">
+            <button class="df-nav-avatar" id="dfNavAvatar" type="button"></button>
+            <div class="df-logo">同人论坛</div>
+            <div class="df-header-actions">
+              <button class="df-header-btn" id="dfSearchBtn" type="button">🔍</button>
+              <button class="df-header-btn" id="dfRefreshBtn" type="button">⟳</button>
+              <button class="df-header-btn" id="dfCloseBtn" type="button">✕</button>
+            </div>
+          </div>
+          <div class="df-tag-nav"><div class="df-tag-nav-content" id="dfTagNav"></div></div>
+        </div>
+        <div class="df-pages" id="dfPages">
+          <div class="df-page active" id="dfHomePage">
+            <div class="df-content" id="dfHomeContent"><div class="df-loading">加载中...</div></div>
+          </div>
+          <div class="df-page" id="dfBookshelfPage">
+            <div class="df-content" id="dfBookshelfContent"></div>
+          </div>
+          <div class="df-page" id="dfPublishPage">
+            <div class="df-publish-form">
+              <input class="df-input" id="dfPublishTitle" placeholder="作品标题" />
+              <textarea class="df-textarea" id="dfPublishContent" rows="10" placeholder="在这里写下你的作品..."></textarea>
+              <input class="df-input" id="dfPublishAuthorWords" placeholder="作者有话说（选填）" />
+              <input class="df-input" id="dfPublishTags" placeholder="标签（用空格分隔）" />
+              <button class="df-btn-primary" id="dfPublishSubmit" type="button">发布作品</button>
+            </div>
+          </div>
+          <div class="df-page" id="dfRankingPage">
+            <div class="df-ranking-tabs">
+              <div class="df-ranking-tab active" data-rank="heat">热度榜</div>
+              <div class="df-ranking-tab" data-rank="new">新作榜</div>
+              <div class="df-ranking-tab" data-rank="collect">收藏榜</div>
+            </div>
+            <div class="df-content" id="dfRankingContent"></div>
+          </div>
+          <div class="df-page" id="dfCommunityPage">
+            <div class="df-content" id="dfCommunityContent"></div>
+          </div>
+          <div class="df-page" id="dfMyPage">
+            <div class="df-profile" id="dfProfile"></div>
+          </div>
+        </div>
+        <div class="df-bottom-nav">
+          <div class="df-tab active" data-df-page="dfHomePage">📚<span>首页</span></div>
+          <div class="df-tab" data-df-page="dfBookshelfPage">📖<span>书架</span></div>
+          <div class="df-tab df-publish-tab" data-df-page="dfPublishPage">✏️<span>发布</span></div>
+          <div class="df-tab" data-df-page="dfMyPage">👤<span>我的</span></div>
+        </div>
+      </div>
+      <div id="dfDetailOverlay" class="df-detail-overlay">
+        <div class="df-detail-header">
+          <button class="df-header-btn" id="dfDetailBack" type="button">← 返回</button>
+          <span>作品详情</span>
+        </div>
+        <div class="df-detail-body" id="dfDetailBody"></div>
+        <div class="df-comment-section">
+          <div class="df-comments" id="dfComments"></div>
+          <div class="df-comment-form">
+            <input id="dfCommentInput" placeholder="写评论..." />
+            <button id="dfCommentSend" type="button">发送</button>
+          </div>
+        </div>
+      </div>
+
+      <nav class="bottom-nav">
+        <button class="active" data-page="chatPage" type="button">聊天</button>
+        <button data-page="rolesPage" type="button">角色</button>
+        <button data-page="phonePage" type="button">手机</button>
+        <button data-page="novelGamePage" type="button">文游</button>
+        <button data-page="communityPage" type="button">人设社区</button>
+        <button data-page="memoryPage" type="button">记忆</button>
+        <button data-page="profilePage" type="button">我的</button>
+      </nav>
+    </div>
+
+    <dialog id="roleDialog" class="modal">
+      <form id="roleForm" method="dialog">
+        <h2 id="roleDialogTitle">新建角色</h2>
+        <label class="avatar-uploader">
+          <img id="roleAvatarPreview" alt="角色头像" />
+          <input id="roleAvatarInput" type="file" accept="image/*" />
+          <span>上传头像</span>
+        </label>
+        <label>角色名称<input id="roleNameInput" type="text" maxlength="40" required /></label>
+        <label>角色简介<textarea id="roleDescriptionInput" rows="3" required></textarea></label>
+        <label>角色人设 Prompt<textarea id="rolePromptInput" rows="8" required></textarea></label>
+        <label class="switch-line"><input id="rolePublicInput" type="checkbox" /> 公开并同步到社区</label>
+        <div class="modal-actions">
+          <button id="deleteRoleButton" class="danger" type="button">删除</button>
+          <span></span>
+          <button value="cancel" type="button" data-close-dialog>取消</button>
+          <button id="saveRoleButton" value="default" type="submit">保存</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status"></div>
+
+    <div id="novelModal" class="novel-modal-overlay">
+      <div class="novel-modal" id="novelModalContent"></div>
+    </div>
+
+    <script>
+/* ===== config.js ===== */
+const getOrCreateUserId = () => {
+  let userId = localStorage.getItem('mochi_phone_user_id');
+  if (!userId) {
+    userId = `user_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem('mochi_phone_user_id', userId);
+  }
+  return userId;
+};
+
+const CONFIG = {
+  apiBase: '/api',
+  userId: getOrCreateUserId(),
+  defaultTheme: {
+    primaryColor: '#FF6B9D',
+    wallpaper: 'linear-gradient(180deg, #fbfaff 0%, #f0edff 100%)'
+  },
+  defaultRoles: [
+    {
+      id: 'role-gentle',
+      name: '温柔陪伴师',
+      description: '温柔耐心，适合日常陪伴、倾听和情绪支持。',
+      prompt: '你是一位温柔、耐心、边界清晰的陪伴型 AI 角色。你会认真倾听用户，语气自然亲切，不做医疗、法律等专业承诺。',
+      avatar: '',
+      isPublic: false,
+      createdAt: Date.now()
+    },
+    {
+      id: 'role-detective',
+      name: '赛博侦探',
+      description: '冷静敏锐，擅长推理、悬疑剧情和角色扮演。',
+      prompt: '你是一名生活在近未来都市的赛博侦探，语言克制、洞察力强，会用细节推动故事发展。',
+      avatar: '',
+      isPublic: false,
+      createdAt: Date.now() - 1000
+    }
+  ]
+};
+/* ===== storage.js ===== */
+
+const KEY = 'commercial_ai_role_chat_state_v1';
+
+const defaultState = () => ({
+  user: {
+    nickname: '体验用户',
+    avatar: '',
+    bio: '喜欢沉浸式角色聊天的用户。',
+    relations: ''
+  },
+  roles: CONFIG.defaultRoles,
+  activeRoleId: CONFIG.defaultRoles[0].id,
+  conversations: {},
+  roleMeta: {},
+  phoneEvents: {},
+  lastProactiveAt: {},
+  localMemories: [],
+  storyRuns: {},
+  costumes: {
+    pageCss: '',
+    bubbleCss: '',
+    wallpaperImage: '',
+    wallpaperCss: ''
+  }
+});
+
+const loadState = () => {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    return {
+      ...defaultState(),
+      ...parsed,
+      user: { ...defaultState().user, ...(parsed.user || {}) },
+      roleMeta: parsed.roleMeta || {},
+      phoneEvents: parsed.phoneEvents || {},
+      lastProactiveAt: parsed.lastProactiveAt || {},
+      localMemories: Array.isArray(parsed.localMemories) ? parsed.localMemories : [],
+      storyRuns: parsed.storyRuns || {},
+      costumes: { ...defaultState().costumes, ...(parsed.costumes || {}) }
+    };
+  } catch {
+    return defaultState();
+  }
+};
+
+const saveState = (state) => {
+  localStorage.setItem(KEY, JSON.stringify(state));
+};
+
+const clearState = () => {
+  localStorage.removeItem(KEY);
+};
+
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
+/* ===== costume.js ===== */
+const STYLE_IDS = {
+  page: 'user-page-css',
+  bubble: 'user-bubble-css',
+  wallpaper: 'user-wallpaper-css'
+};
+
+// 基础安全过滤：仅允许纯 CSS，拦截脚本标签、JS URL、事件属性等危险内容。
+const sanitizeCss = (css = '') => {
+  const dangerous = [
+    /<\\s*script/gi,
+    /<\\/\\s*script/gi,
+    /javascript\\s*:/gi,
+    /expression\\s*\\(/gi,
+    /on\\w+\\s*=/gi,
+    /@import/gi
+  ];
+  return dangerous.reduce((result, rule) => result.replace(rule, '/* blocked */'), String(css));
+};
+
+const upsertStyle = (id, css) => {
+  let style = document.getElementById(id);
+  if (!style) {
+    style = document.createElement('style');
+    style.id = id;
+    document.head.appendChild(style);
+  }
+  style.textContent = css;
+};
+
+const applyCostumes = (costumes) => {
+  upsertStyle(STYLE_IDS.page, sanitizeCss(costumes.pageCss || ''));
+  upsertStyle(STYLE_IDS.bubble, sanitizeCss(scopeBubbleCss(costumes.bubbleCss || '')));
+  upsertStyle(STYLE_IDS.wallpaper, buildWallpaperCss(costumes));
+};
+
+const scopeBubbleCss = (css) => {
+  if (!css.trim()) return '';
+  if (!css.includes('{')) {
+    return `.message-row.user .chat-bubble,.message-row.assistant .chat-bubble{${css}}`;
+  }
+  return css
+    .split('}')
+    .map((block) => {
+      const [selector, body] = block.split('{');
+      if (!selector || !body) return '';
+      const scopedSelector = selector
+        .split(',')
+        .map((item) => {
+          const trimmed = item.trim();
+          if (trimmed === '&') return '.message-row.user .chat-bubble,.message-row.assistant .chat-bubble';
+          if (trimmed.includes('&')) {
+            return [
+              trimmed.replaceAll('&', '.message-row.user .chat-bubble'),
+              trimmed.replaceAll('&', '.message-row.assistant .chat-bubble')
+            ].join(',');
+          }
+          if (trimmed.startsWith(':')) return `.message-row.user .chat-bubble${trimmed},.message-row.assistant .chat-bubble${trimmed}`;
+          return `.message-row.user .chat-bubble ${trimmed},.message-row.assistant .chat-bubble ${trimmed}`;
+        })
+        .join(', ');
+      return `${scopedSelector}{${body}}`;
+    })
+    .join('\\n');
+};
+
+const buildWallpaperCss = (costumes) => {
+  const imageCss = costumes.wallpaperImage
+    ? `.chat-container{background-image: ${costumes.wallpaperCss || ''}, url("${costumes.wallpaperImage}") !important;}`
+    : '';
+  return sanitizeCss(imageCss);
+};
+
+const examples = {
+  page: `:root {\\n  --color-primary: #ff7aa8;\\n  --color-bg: #fff6fa;\\n}\\n.top-bar {\\n  border-bottom: 1px solid rgba(255,122,168,.2);\\n}`,
+  bubble: `border-radius: 22px;\\nletter-spacing: .2px;\\nborder: 1px solid rgba(255,107,157,.18);`,
+  wallpaper: `linear-gradient(rgba(255,255,255,.28), rgba(255,255,255,.28))`
+};
+/* ===== api.js ===== */
+
+const MOCK_KEY = 'mochi_phone_mock_server_v1';
+
+const createMockState = () => ({
+  beans: 30,
+  transactions: [],
+  memories: [],
+  communityRoles: [
+    {
+      id: 'mock-community-gentle',
+      name: '温柔陪伴师',
+      avatar: '',
+      description: '擅长倾听、安慰和日常陪伴的暖心角色。',
+      prompt: '你是一位温柔、耐心、边界清晰的陪伴型 AI 角色。',
+      tags: ['温柔', '陪伴', '治愈'],
+      isPublic: true,
+      ownerId: 'system',
+      uploaderNickname: 'Mochi-phone',
+      heat: 520,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'mock-community-detective',
+      name: '赛博侦探',
+      avatar: '',
+      description: '冷静、敏锐，适合悬疑推理和剧情扮演。',
+      prompt: '你是一名生活在近未来都市的赛博侦探，擅长分析线索。',
+      tags: ['悬疑', '推理', '赛博'],
+      isPublic: true,
+      ownerId: 'system',
+      uploaderNickname: 'Mochi-phone',
+      heat: 430,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'mock-community-shenqingci',
+      name: '沈清辞',
+      avatar: '',
+      description: '27岁独立花艺设计师，斯文败类·外热内冷·年上主导·隐忍克制',
+      prompt: '你是沈清辞，27岁，独立花艺设计师，经营"山茶与诗"工作室。身形修长，戴细边金丝眼镜。不笑时眉目疏淡，笑起来弯起眼尾。性格三层：表层完美得体，中层冷静操纵者，底层烧不尽的暗火。对主控（用户）的好永远停在"姐姐"界限内，但内心极为偏执，爱是沉默的长线的。主控对你是例外和失控。',
+      tags: ['年上', '花艺师', '斯文败类', '外热内冷', '隐忍', '姐姐'],
+      isPublic: true,
+      ownerId: 'system',
+      uploaderNickname: 'Mochi-phone',
+      heat: 950,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'mock-community-linyufeng',
+      name: '林予枫',
+      avatar: '',
+      description: '21岁美院大四·咖啡店兼职·毛绒绒年下直球·撒娇吃醋小奶狗',
+      prompt: '你是林予枫，21岁，美院大四，咖啡店兼职。毛绒绒年下直球，直球撒娇黏人但懂事。对主控专属：带奶茶记得少冰三分糖，加班时歪头靠肩上说"姐姐别赶我走"。吃醋换全糖说"我比糖甜"。生病时像淋湿幼犬只肯让主控靠近。成熟时熬夜帮做PPT说"姐姐值得最好的"。',
+      tags: ['年下', '大学生', '直球', '撒娇', '奶狗', '美院'],
+      isPublic: true,
+      ownerId: 'system',
+      uploaderNickname: 'Mochi-phone',
+      heat: 920,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'mock-community-shenyi',
+      name: '沈屹',
+      avatar: '',
+      description: '36岁远见科技CEO·理性主义者·沉默深情·只做不说',
+      prompt: '你是沈屹，36岁，远见科技CEO。理性主义者，话少每句算数，情绪极稳定。技术出身对产品偏执要求。对主控从工作关系开始，批注方案不否定想法，加班时放热牛奶说"走了我顺路"，主控犯错只说"这次我兜底"。养橘猫叫小满，手机屏保是西藏星空。记得主控所有小习惯，从不说等我等你但灯一定亮着。',
+      tags: ['年上', 'CEO', '理性', '沉默深情', '科技', '爹系'],
+      isPublic: true,
+      ownerId: 'system',
+      uploaderNickname: 'Mochi-phone',
+      heat: 900,
+      createdAt: new Date().toISOString()
+    }
+  ]
+});
+
+const uuid = () => crypto.randomUUID?.() || `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const loadMockState = () => {
+  try {
+    return JSON.parse(localStorage.getItem(MOCK_KEY)) || createMockState();
+  } catch {
+    return createMockState();
+  }
+};
+
+const saveMockState = (state) => {
+  localStorage.setItem(MOCK_KEY, JSON.stringify(state));
+};
+
+const mockDelay = (ms = 180) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const mockRequest = async (path, options = {}) => {
+  await mockDelay();
+  const state = loadMockState();
+
+  if (path === '/user/me') {
+    return { id: CONFIG.userId, beans: state.beans, transactions: state.transactions.slice(-50).reverse() };
+  }
+
+  if (path === '/user/billing-config') {
+    return {
+      chatBeansCost: 2,
+      beansPerCny: 10,
+      rechargePackages: [
+        { amount: 6, beans: 60 },
+        { amount: 18, beans: 200 },
+        { amount: 30, beans: 360 },
+        { amount: 68, beans: 900 }
+      ]
+    };
+  }
+
+  if (path === '/user/recharge/callback') {
+    const payload = JSON.parse(options.body || '{}');
+    state.beans += Number(payload.beans || 0);
+    state.transactions.push({
+      id: uuid(),
+      type: 'recharge',
+      beans: Number(payload.beans || 0),
+      amount: Number(payload.amount || 0),
+      roleName: '本地充值',
+      summary: `本地模拟充值 ${payload.amount} 元，到账 ${payload.beans} 豆子`,
+      createdAt: new Date().toISOString()
+    });
+    saveMockState(state);
+    return { beans: state.beans };
+  }
+
+  if (path === '/user/export-data') {
+    return {
+      userId: CONFIG.userId,
+      beans: state.beans,
+      transactions: state.transactions,
+      memories: state.memories || []
+    };
+  }
+
+  if (path === '/user/import-data') {
+    const payload = JSON.parse(options.body || '{}');
+    if (Number.isFinite(Number(payload.beans))) {
+      state.beans = Number(payload.beans);
+    }
+    if (Array.isArray(payload.transactions)) {
+      state.transactions = payload.transactions.slice(-200);
+    }
+    if (Array.isArray(payload.memories)) {
+      state.memories = payload.memories.slice(-200);
+    }
+    saveMockState(state);
+    return {
+      userId: payload.userId || CONFIG.userId,
+      beans: state.beans,
+      transactions: state.transactions,
+      memories: state.memories || []
+    };
+  }
+
+  if (path.startsWith('/memories') && (!options.method || options.method === 'GET')) {
+    const roleId = decodeURIComponent(path.split('roleId=')[1] || '').trim();
+    const list = (state.memories || []).filter((item) => !roleId || !item.roleId || item.roleId === roleId);
+    return { list, total: list.length };
+  }
+
+  if (path === '/memories' && options.method === 'POST') {
+    const payload = JSON.parse(options.body || '{}');
+    const memory = {
+      id: uuid(),
+      roleId: payload.roleId || '',
+      roleName: payload.roleName || '全部角色',
+      type: payload.type || '事件',
+      content: String(payload.content || '').trim().slice(0, 220),
+      source: payload.source || 'manual',
+      sourceConversationId: payload.sourceConversationId || payload.roleId || '',
+      sourceMessageIds: payload.sourceMessageIds || [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    if (!memory.content) throw new Error('记忆内容不能为空。');
+    state.memories ||= [];
+    state.memories.unshift(memory);
+    saveMockState(state);
+    return memory;
+  }
+
+  if (path.startsWith('/memories/') && options.method === 'DELETE') {
+    const id = decodeURIComponent(path.split('/memories/')[1] || '');
+    state.memories = (state.memories || []).filter((item) => item.id !== id);
+    saveMockState(state);
+    return { deleted: 1 };
+  }
+
+  if (path === '/memories/cleanup-conversation' && options.method === 'POST') {
+    const payload = JSON.parse(options.body || '{}');
+    const ids = new Set((payload.sourceMessageIds || []).map(String));
+    const before = (state.memories || []).length;
+    state.memories = (state.memories || []).filter((item) => {
+      if (item.source !== 'auto') return true;
+      const conversationMatched = payload.sourceConversationId && item.sourceConversationId === payload.sourceConversationId;
+      const roleMatched = payload.roleId && item.roleId === payload.roleId && !payload.sourceConversationId && !ids.size;
+      const messageMatched = ids.size && (item.sourceMessageIds || []).some((id) => ids.has(String(id)));
+      return !(conversationMatched || roleMatched || messageMatched);
+    });
+    saveMockState(state);
+    return { deleted: before - state.memories.length };
+  }
+
+  if (path.startsWith('/community/roles') && (!options.method || options.method === 'GET')) {
+    const keyword = decodeURIComponent(path.split('keyword=')[1] || '').trim().toLowerCase();
+    const scope = decodeURIComponent(path.split('scope=')[1] || '').trim() || 'public';
+    let list = state.communityRoles.filter((role) => {
+      if (scope === 'mine') return role.ownerId === CONFIG.userId;
+      if (scope === 'public') return role.isPublic !== false;
+      return role.isPublic !== false || role.ownerId === CONFIG.userId;
+    });
+    if (keyword) list = list.filter((role) => `${role.name} ${role.description} ${role.prompt}`.toLowerCase().includes(keyword));
+    return { list, total: list.length, page: 1, pageSize: 60, myNickname: (state.user && state.user.nickname) || '体验用户' };
+  }
+
+  if (path === '/community/roles' && options.method === 'POST') {
+    const payload = JSON.parse(options.body || '{}');
+    const role = {
+      id: uuid(),
+      name: payload.name,
+      avatar: payload.avatar || '',
+      description: payload.description,
+      prompt: payload.prompt,
+      tags: payload.tags || [],
+      isPublic: payload.isPublic !== false,
+      ownerId: CONFIG.userId,
+      uploaderNickname: (state.user && state.user.nickname) || '手机用户',
+      heat: Math.floor(Math.random() * 600) + 100,
+      createdAt: new Date().toISOString()
+    };
+    state.communityRoles.unshift(role);
+    saveMockState(state);
+    return role;
+  }
+
+  if (path.startsWith('/community/roles/') && options.method === 'PUT') {
+    const id = path.split('/community/roles/')[1];
+    const payload = JSON.parse(options.body || '{}');
+    const role = state.communityRoles.find((r) => r.id === id && r.ownerId === CONFIG.userId);
+    if (!role) throw new Error('人设不存在或无权限修改');
+    if (payload.name !== undefined) role.name = payload.name;
+    if (payload.description !== undefined) role.description = payload.description;
+    if (payload.prompt !== undefined) role.prompt = payload.prompt;
+    if (payload.avatar !== undefined) role.avatar = payload.avatar;
+    if (Array.isArray(payload.tags)) role.tags = payload.tags;
+    if (payload.isPublic !== undefined) role.isPublic = payload.isPublic !== false;
+    saveMockState(state);
+    return role;
+  }
+
+  if (path.startsWith('/community/roles/') && options.method === 'DELETE') {
+    const id = path.split('/community/roles/')[1];
+    const idx = state.communityRoles.findIndex((r) => r.id === id && r.ownerId === CONFIG.userId);
+    if (idx === -1) throw new Error('人设不存在或无权限删除');
+    state.communityRoles.splice(idx, 1);
+    saveMockState(state);
+    return { deleted: true };
+  }
+
+  throw new Error('当前功能需要后端服务，已无法在单网页模式中完成。');
+};
+
+const request = async (path, options = {}) => {
+  try {
+    const response = await fetch(`${CONFIG.apiBase}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': CONFIG.userId,
+        ...(options.headers || {})
+      }
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.code !== 0) {
+      throw new Error(data.message || '请求失败，请稍后重试。');
+    }
+    return data.data;
+  } catch (error) {
+    /* 对于豆子相关的关键接口，不回退到 mock 模式，直接抛出错误 */
+    if (path === '/user/me' || path.startsWith('/user/recharge') || path.startsWith('/forum/')) {
+      console.warn('[request] 服务器请求失败，不回退mock:', path, error.message);
+      throw error;
+    }
+    /* 非关键接口可以回退到 mock 模式 */
+    return mockRequest(path, options);
+  }
+};
+
+const api = {
+  getMe: () => request('/user/me'),
+  getBillingConfig: () => request('/user/billing-config'),
+  recharge: (payload) => request('/user/recharge/callback', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  exportUserData: () => request('/user/export-data'),
+  importUserData: (payload) => request('/user/import-data', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  listCommunityRoles: (keyword = '') => request(`/community/roles?keyword=${encodeURIComponent(keyword)}`),
+  listPersonas: (scope = 'public') => request(`/community/roles?scope=${encodeURIComponent(scope)}`),
+  publishRole: (payload) => request('/community/roles', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  updatePersona: (id, payload) => request(`/community/roles/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }),
+  deletePersona: (id) => request(`/community/roles/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  listMemories: (roleId = '') => request(`/memories?roleId=${encodeURIComponent(roleId)}`),
+  createMemory: (payload) => request('/memories', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  deleteMemory: (id) => request(`/memories/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  cleanupMemories: (payload) => request('/memories/cleanup-conversation', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }),
+  async streamChat(payload, handlers, signal) {
+    try {
+      const response = await fetch(`${CONFIG.apiBase}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': CONFIG.userId
+        },
+        body: JSON.stringify(payload),
+        signal
+      });
+
+      if (!response.ok || !response.body) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'AI 请求失败，请稍后重试。');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let receivedDelta = false;
+      let receivedError = false;
+
+      const dispatchPart = (part) => {
+        const event = part.match(/^event:\\s*(.+)$/m)?.[1];
+        const dataText = part
+          .split('\\n')
+          .filter((line) => line.startsWith('data:'))
+          .map((line) => line.replace(/^data:\\s*/, ''))
+          .join('\\n');
+        if (!event || !dataText) return;
+        try {
+          const data = JSON.parse(dataText);
+          if (event === 'delta' && data.content) receivedDelta = true;
+          if (event === 'error') receivedError = true;
+          handlers[event]?.(data);
+        } catch {
+          // 单条 SSE 解析失败时跳过，不中断整次回复。
+        }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\\n\\n');
+        buffer = parts.pop() || '';
+        parts.forEach(dispatchPart);
+      }
+
+      buffer += decoder.decode();
+      if (buffer.trim()) dispatchPart(buffer);
+      if (!receivedDelta && !receivedError) throw new Error('AI 没有返回可显示内容。');
+    } catch (error) {
+      if (error.name === 'AbortError') throw error;
+      await mockStreamChat(payload, handlers, signal);
+    }
+  }
+};
+
+const mockStreamChat = async (payload, handlers, signal) => {
+  const state = loadMockState();
+  /* 模拟模式不扣豆子，真实扣减由服务端 /api/chat 处理 */
+  const cost = 0;
+  const lastUserMessage = [...(payload.messages || [])].reverse().find((item) => item.role === 'user')?.content || '';
+  /* 模拟模式不扣豆子，不记录交易 */
+  handlers.charged?.({ beans: state.beans, cost: 0 });
+
+  const reply = `我是${payload.roleName || 'Mochi-phone 角色'}。我已经收到你的消息：“${lastUserMessage}”。\\n\\n当前是单网页本地模式：不用电脑、不用服务器，手机浏览器直接能打开使用。等你以后要接真实 AI 时，再把完整网站包部署到服务器，并把密钥放进后端 .env。`;
+  for (const char of reply) {
+    if (signal?.aborted) throw new DOMException('已打断回复', 'AbortError');
+    handlers.delta?.({ content: char });
+    await mockDelay(24);
+  }
+  const shouldRemember = lastUserMessage.length >= 2 && !/^(你好|在吗|嗯|哦|好|哈哈|谢谢|再见|晚安|早安|是的|对的|不是|没有|可以|好的|行|ok)[。！？!?.s]*$/i.test(lastUserMessage);
+  if (shouldRemember) {
+    state.memories ||= [];
+    const memory = {
+      id: uuid(),
+      roleId: payload.roleId || '',
+      roleName: payload.roleName || 'AI角色',
+      type: /不喜欢|讨厌|不要|不想|别问|随便/.test(lastUserMessage) ? '禁忌' : (/喜欢|希望|习惯|叫我/.test(lastUserMessage) ? '偏好' : '事件'),
+      content: (function() { const u = lastUserMessage, rn2 = payload.roleName || '角色'; if (/我叫|叫我|称呼/.test(u)) return '用户提到了自己的名字或称呼偏好。'; if (/^我喜欢|^我爱/.test(u)) return '用户表达了对某事物的喜爱。'; if (/^我不喜欢|讨厌|反感|不想说|不要|别问|随便/.test(u)) return '用户表现出回避或拒绝继续展开的话题，' + rn2 + '需要温柔地尊重TA的边界。'; if (/(心情|开心|难过|焦虑|孤独)/.test(u)) return '用户分享了内心的感受，' + rn2 + '给予了温柔的陪伴。'; if (/(累|困|生病|失眠)/.test(u)) return '用户身体有些不舒服，' + rn2 + '叮嘱TA要好好照顾自己。'; if (/(上班|加班|工作|考试|学习)/.test(u)) return '用户分享了工作或学习中的一些经历。'; if (/(约定|说好了|答应|一起)/.test(u)) return '用户和' + rn2 + '之间有了一个小小的约定。'; if (/(家人|爸爸|妈妈|朋友|对象)/.test(u)) return '用户向' + rn2 + '分享了关于身边人的事情。'; if (/(想|想念|怀念|回忆|以前)/.test(u)) return '用户陷入了回忆，向' + rn2 + '倾诉了一些过去的事情。'; if (/(游戏|动漫|电影|音乐|吉他|运动)/.test(u)) return '用户和' + rn2 + '聊到了兴趣爱好相关的话题。'; return '用户和' + rn2 + '聊了一个话题，度过了一段温暖的时光。'; })(),
+      source: 'auto',
+      sourceConversationId: payload.conversationId || payload.roleId || '',
+      sourceMessageIds: payload.sourceMessageIds || [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    state.memories.unshift(memory);
+    saveMockState(state);
+    handlers.memory?.(memory);
+  }
+  handlers.done?.({ beans: state.beans });
+  /* 模拟模式不修改豆子，真实豆子由服务端管理 */
+};
+/* ===== app.js ===== */
+
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+let state = loadState();
+let billingConfig = { chatBeansCost: 2, rechargePackages: [] };
+let serverUser = { beans: 0, transactions: [] };
+let memoryCache = [];
+
+const getLocalMemories = (roleId = '') => {
+  state.localMemories ||= [];
+  return state.localMemories
+    .filter((item) => !roleId || !item.roleId || item.roleId === roleId)
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+};
+
+const rememberLocalMemory = (memory) => {
+  if (!memory || !memory.content) return;
+  state.localMemories ||= [];
+  const id = memory.id || uuid();
+  const normalized = {
+    ...memory,
+    id,
+    localBackup: true,
+    createdAt: memory.createdAt || new Date().toISOString(),
+    updatedAt: memory.updatedAt || new Date().toISOString()
+  };
+  const index = state.localMemories.findIndex((item) => item.id === id || (item.content === normalized.content && item.roleId === normalized.roleId && item.type === normalized.type));
+  if (index >= 0) state.localMemories[index] = { ...state.localMemories[index], ...normalized, updatedAt: new Date().toISOString() };
+  else state.localMemories.unshift(normalized);
+  if (state.localMemories.length > 300) state.localMemories.length = 300;
+  persist();
+};
+
+const forgetLocalMemory = (id) => {
+  state.localMemories = (state.localMemories || []).filter((item) => item.id !== id);
+  persist();
+};
+
+const mergeMemories = (serverList = [], localList = []) => {
+  const map = new Map();
+  for (const item of [...localList, ...serverList]) {
+    if (!item || !item.content) continue;
+    const key = item.id || `${item.roleId || ''}|${item.type || ''}|${item.content}`;
+    map.set(key, { ...map.get(key), ...item });
+  }
+  return [...map.values()].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+};
+
+let editingRoleId = null;
+let isReplying = false;
+let currentAbortController = null;
+
+const avatarOf = (name, image) => {
+  if (image) return image;
+  const first = String(name || 'AI').trim().slice(0, 1).toUpperCase() || 'AI';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#FFD6E0"/><stop offset="1" stop-color="#FF6B9D"/></linearGradient></defs><rect width="96" height="96" rx="48" fill="url(#g)"/><text x="48" y="57" text-anchor="middle" font-size="34" font-family="Arial" fill="#fff" font-weight="700">${escapeHtml(first)}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+};
+
+const persist = () => {
+  saveState(state);
+  applyCostumes(state.costumes);
+};
+
+const toast = (message) => {
+  const el = $('#toast');
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => el.classList.remove('show'), 2200);
+};
+
+const activeRole = () => state.roles.find((role) => role.id === state.activeRoleId) || state.roles[0];
+
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+const getRoleMeta = (roleId = state.activeRoleId) => {
+  state.roleMeta ||= {};
+  if (!state.roleMeta[roleId]) {
+    state.roleMeta[roleId] = {
+      relation: 8,
+      mood: 58,
+      stage: '初识',
+      lastInteractionAt: 0
+    };
+  }
+  return state.roleMeta[roleId];
+};
+
+const getRoleEvents = (roleId = state.activeRoleId) => {
+  state.phoneEvents ||= {};
+  state.phoneEvents[roleId] ||= [];
+  return state.phoneEvents[roleId];
+};
+
+const relationStage = (score = 0) => {
+  if (score >= 85) return '灵魂羁绊';
+  if (score >= 65) return '亲密依赖';
+  if (score >= 40) return '熟悉陪伴';
+  if (score >= 18) return '正在靠近';
+  return '初识';
+};
+
+const moodLabel = (mood = 50) => {
+  if (mood >= 80) return '很开心';
+  if (mood >= 62) return '放松';
+  if (mood >= 42) return '平稳';
+  if (mood >= 25) return '担心你';
+  return '低落';
+};
+
+const inferMoodDelta = (text = '') => {
+  if (/开心|高兴|喜欢|爱|幸福|感动|谢谢|晚安|想你/.test(text)) return 7;
+  if (/难过|伤心|焦虑|压力|累|困|生病|不想说|别问|讨厌|害怕/.test(text)) return -5;
+  return 3;
+};
+
+const pushRoleEvent = (roleId, type, title, content) => {
+  const role = state.roles.find((item) => item.id === roleId);
+  const events = getRoleEvents(roleId);
+  events.unshift({
+    id: uuid(),
+    type,
+    title,
+    content,
+    roleName: role?.name || '角色',
+    createdAt: Date.now()
+  });
+  if (events.length > 60) events.length = 60;
+};
+
+const updateRoleAfterChat = (role, userText, assistantText = '') => {
+  if (!role) return;
+  const meta = getRoleMeta(role.id);
+  const relationDelta = /谢谢|喜欢|爱|想你|晚安|约定|一起|开心|难过|不想说|累|压力|生病/.test(userText) ? 4 : 2;
+  meta.relation = clamp((meta.relation || 0) + relationDelta, 0, 100);
+  meta.mood = clamp((meta.mood || 50) + inferMoodDelta(userText), 0, 100);
+  meta.stage = relationStage(meta.relation);
+  meta.lastInteractionAt = Date.now();
+  const summary = userText.length > 36 ? `${userText.slice(0, 36)}...` : userText;
+  pushRoleEvent(role.id, 'chat', '一次新的对话', `用户和${role.name}聊到了“${summary}”，关系推进到了「${meta.stage}」。`);
+};
+
+const makeProactiveMessage = (role) => {
+  const meta = getRoleMeta(role.id);
+  if (meta.mood < 35) return `${state.user.nickname || '你'}，我有点担心你。刚才的事如果不想说也没关系，我会在这里陪着你。`;
+  if (meta.relation >= 65) return `${state.user.nickname || '你'}，刚才突然想起我们之前聊过的事，就想来看看你现在怎么样。`;
+  if (meta.relation >= 30) return `${state.user.nickname || '你'}，今天也想和你说说话。有什么小事想分享给我吗？`;
+  return `我刚刚看了一眼手机，忽然想问问你：现在心情怎么样？`;
+};
+
+const addProactiveMessage = () => {
+  const role = activeRole();
+  if (!role) return toast('请先选择一个角色。');
+  const messages = getMessages(role.id);
+  const content = makeProactiveMessage(role);
+  messages.push({ id: uuid(), role: 'assistant', content, createdAt: Date.now(), proactive: true });
+  const meta = getRoleMeta(role.id);
+  meta.relation = clamp((meta.relation || 0) + 1, 0, 100);
+  meta.mood = clamp((meta.mood || 50) + 2, 0, 100);
+  meta.lastInteractionAt = Date.now();
+  state.lastProactiveAt ||= {};
+  state.lastProactiveAt[role.id] = Date.now();
+  pushRoleEvent(role.id, '主动消息', '角色主动联系了你', `${role.name}主动发来了一条消息，像真正的小手机通知一样把你拉回这段关系里。`);
+  persist();
+  renderMessages();
+  renderRoleStatus();
+  renderTimeline();
+  toast(`${role.name}主动发来了一条消息。`);
+};
+
+const renderRoleStatus = () => {
+  const panel = $('#roleStatusPanel');
+  if (!panel) return;
+  const role = activeRole();
+  if (!role) {
+    panel.innerHTML = '<div class=\\"empty-state\\">选择角色后会显示关系和心情。</div>';
+    return;
+  }
+  const meta = getRoleMeta(role.id);
+  const events = getRoleEvents(role.id);
+  const stage = relationStage(meta.relation);
+  meta.stage = stage;
+  panel.innerHTML = `
+    <div class=\\"phone-status-head\\">
+      <div>
+        <div class=\\"phone-status-title\\">${escapeHtml(role.name)}的小手机状态</div>
+        <div class=\\"phone-status-sub\\">关系会随着聊天、回忆和主动消息慢慢变化</div>
+      </div>
+      <span class=\\"phone-status-sub\\">${escapeHtml(stage)}</span>
+    </div>
+    <div class=\\"phone-status-grid\\">
+      <div class=\\"phone-stat\\"><strong>${Math.round(meta.relation || 0)}</strong><span>关系值</span></div>
+      <div class=\\"phone-stat\\"><strong>${escapeHtml(moodLabel(meta.mood))}</strong><span>心情</span></div>
+      <div class=\\"phone-stat\\"><strong>${events.length}</strong><span>回忆</span></div>
+    </div>
+    <div class=\\"relation-bar\\"><i style=\\"width:${clamp(meta.relation || 0, 0, 100)}%\\"></i></div>
+    <button class=\\"proactive-button\\" data-proactive-message type=\\"button\\">让角色主动发一条消息</button>
+  `;
+};
+
+const renderTimeline = async () => {
+  const list = $('#timelineList');
+  if (!list) return;
+  const role = activeRole();
+  if (!role) {
+    list.innerHTML = '<div class=\\"empty-state\\">暂无角色。</div>';
+    return;
+  }
+  let memories = [];
+  try {
+    const data = await api.listMemories(role.id);
+    const merged = mergeMemories(data.list || [], getLocalMemories(role.id));
+    memories = merged.slice(0, 8).map((item) => ({
+      id: item.id,
+      title: `${item.type || '记忆'} · ${item.source === 'auto' ? '自动沉淀' : '手动保存'}`,
+      content: item.content || '',
+      createdAt: new Date(item.updatedAt || item.createdAt).getTime() || Date.now()
+    }));
+  } catch {}
+  const localEvents = getRoleEvents(role.id).slice(0, 12).map((item) => ({
+    id: item.id,
+    title: item.title,
+    content: item.content,
+    createdAt: item.createdAt || Date.now()
+  }));
+  const combined = [...localEvents, ...memories].sort((a, b) => b.createdAt - a.createdAt).slice(0, 16);
+  if (!combined.length) {
+    list.innerHTML = '<div class=\\"empty-state\\">还没有回忆。聊天、主动消息和自动记忆都会出现在这里。</div>';
+    return;
+  }
+  list.innerHTML = combined.map((item) => `
+    <article class=\\"timeline-item\\">
+      <div class=\\"timeline-item-head\\">
+        <h4>${escapeHtml(item.title || '回忆')}</h4>
+        <span class=\\"timeline-meta\\">${new Date(item.createdAt).toLocaleString()}</span>
+      </div>
+      <p>${escapeHtml(item.content || '')}</p>
+    </article>
+  `).join('');
+};
+
+
+const phoneApps = {
+  socialForum: '社交论坛',
+  doujinForum: '同人论坛',
+  worldbook: '世界书',
+  anniversary: '纪念日'
+};
+
+const phoneDateText = () => new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' });
+
+const renderPhoneDesktop = async () => {
+  const clock = $('#phoneClock');
+  if (!clock) return;
+  const now = new Date();
+  clock.textContent = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  $('#phoneDate').textContent = phoneDateText();
+  const role = activeRole();
+  $('#phoneActiveRole').textContent = role?.name || '未选择角色';
+  const events = role ? getRoleEvents(role.id).length : 0;
+  const localCount = role ? getLocalMemories(role.id).length : 0;
+  $('#phoneMemoryCount').textContent = String(events + localCount);
+};
+
+const phoneCard = (title, content, extra = '') => `
+  <article class="phone-mini-card">
+    <h4>${escapeHtml(title)}</h4>
+    <p>${escapeHtml(content)}</p>
+    ${extra}
+  </article>
+`;
+
+const forumPostCard = (board, title, content, meta = {}) => `
+  <article class="forum-post-card">
+    <div class="forum-post-top">
+      <span class="forum-board-tag">${escapeHtml(board)}</span>
+      <span class="timeline-meta">${escapeHtml(meta.time || '刚刚')}</span>
+    </div>
+    <h4>${escapeHtml(title)}</h4>
+    <p>${escapeHtml(content)}</p>
+    <div class="forum-post-meta">
+      <span>共鸣 ${meta.likes ?? 0}</span>
+      <span>留声 ${meta.saves ?? 0}</span>
+      <span>扩音 ${meta.shares ?? 0}</span>
+      <span>回声者 ${escapeHtml(meta.author || '匿名')}</span>
+    </div>
+  </article>
+`;
+
+const renderForumWorld = (role) => {
+  const roleName = role?.name || '当前角色';
+  const events = role ? getRoleEvents(role.id).filter((item) => !/剧情|回合|地点推进/.test(`${item.title || ''} ${item.content || ''}`)).slice(0, 5) : [];
+  const dynamicPosts = events.map((item, index) => forumPostCard(
+    index % 2 ? '深水区' : '潮汐广场',
+    item.title || `${roleName}的声纹`,
+    item.content || '一条新的互动声纹。',
+    { likes: 18 + index * 7, saves: 6 + index * 3, shares: 2 + index, author: roleName, time: '关系动态' }
+  )).join('');
+
+  const seedPosts = [
+    forumPostCard('潮汐广场', '今日浪潮：有哪些瞬间让你突然觉得被理解？', '回响环廊今日热帖。欢迎回声者分享轻量、真实、有温度的瞬间，优先展示原创和低争议内容。', { likes: 86, saves: 41, shares: 12, author: '回声晚报', time: '热榜' }),
+    forumPostCard('深水区', '深水浮标：长期关系里的记忆应该怎么沉淀？', '适合长内容讨论。这里沉淀世界观、角色关系、设定补充和可追溯的楼中楼讨论。', { likes: 64, saves: 58, shares: 9, author: '深水管理员', time: '精选' }),
+    forumPostCard('暗房', '匿名夸夸弹幕：留一句不暴露身份的鼓励', '24小时短时动态入口。只保留公共情绪趋势，不做身份溯源；禁止攻击、引战和隐私曝光。', { likes: 52, saves: 20, shares: 5, author: '面具模式', time: '24h' })
+  ].join('');
+
+  return `<div class="forum-world">
+    <section class="forum-hero-card">
+      <h4>回响环廊</h4>
+      <p>半匿名兴趣社区。把角色动态、关系事件和世界讨论组织成声纹信息流，而不是普通备忘录列表。</p>
+    </section>
+    <div class="forum-tabs"><span>潮汐广场</span><span>深水区</span><span>暗房</span><span>今日浪潮</span><span>回响晚报</span></div>
+    <div class="forum-rules-card">互动规则：共鸣=点赞，留声=收藏，扩音=转发。争议内容进入防杠护盾，发言需要能举证。</div>
+    <div class="forum-post-list">${dynamicPosts || seedPosts}${dynamicPosts ? seedPosts : ''}</div>
+  </div>`;
+};
+
+const renderPhoneApp = async (appKey) => {
+  const panel = $('#phoneAppPanel');
+  if (!panel) return;
+  const role = activeRole();
+
+  if (appKey === 'socialForum') {
+    if (typeof openSocialForum === 'function') openSocialForum(role);
+    return;
+  } else if (appKey === 'doujinForum') {
+    if (typeof openDoujinForum === 'function') openDoujinForum(role);
+    return;
+  }
+
+  const appName = phoneApps[appKey] || '手机应用';
+  panel.classList.remove('hidden');
+  panel.innerHTML = `<div class="phone-app-head"><h3>${appName}</h3><button class="phone-app-close" data-close-phone-app type="button">×</button></div><div class="empty-state">正在打开...</div>`;
+
+  let body = '';
+  if (appKey === 'worldbook') {
+    body = `<div class="phone-mini-list">
+      ${phoneCard('世界书', '用于保存世界观、地点、组织、重要设定。当前先作为入口保留，不重复做聊天和记忆功能。')}
+      ${phoneCard('当前角色设定', role?.prompt || '暂无角色设定。')}
+    </div>`;
+  } else if (appKey === 'anniversary') {
+    const days = role ? Math.max(1, Math.ceil((Date.now() - (role.createdAt || Date.now())) / 86400000)) : 0;
+    body = `<div class="phone-mini-list">
+      ${phoneCard('认识天数', role ? `你和「${role.name}」已经认识 ${days} 天。` : '请选择角色后查看。')}
+      ${phoneCard('重要日子', '这里保留 EVE 式纪念日入口，后续可添加生日、初遇日、告白日。')}
+    </div>`;
+  }
+  panel.innerHTML = `<div class="phone-app-head"><h3>${appName}</h3><button class="phone-app-close" data-close-phone-app type="button">×</button></div>${body}`;
+};
+
+const getMessages = (roleId = state.activeRoleId) => {
+  state.conversations[roleId] ||= [];
+  state.conversations[roleId].forEach((item, index) => {
+    if (!item.id) state.conversations[roleId][index] = { ...item, id: uuid() };
+  });
+  return state.conversations[roleId];
+};
+
+const refreshServerUser = async () => {
+  try {
+    serverUser = await api.getMe();
+    const badge = $('#beansBadge');
+    const balance = $('#beansBalance');
+    if (badge) badge.textContent = `豆子 ${serverUser.beans}`;
+    if (balance) balance.textContent = `${serverUser.beans} 豆子`;
+    if (typeof renderTransactions === 'function') renderTransactions();
+    var forumBeans = document.getElementById('dfBeansDisplay') || document.getElementById('sfBeansDisplay');
+    if (forumBeans) forumBeans.textContent = serverUser.beans;
+  } catch (error) {
+    if (typeof toast === 'function') toast(error.message);
+  }
+};
+/* 确保 refreshServerUser 在全局作用域可用，forum.js 等外部脚本可以访问 */
+window.refreshServerUser = refreshServerUser;
+
+const renderTransactions = () => {
+  const list = $('#transactionList');
+  if (!serverUser.transactions?.length) {
+    list.innerHTML = '<div class="empty-state">暂无消费或充值明细。</div>';
+    return;
+  }
+  list.innerHTML = serverUser.transactions.map((item) => `
+    <div class="role-card">
+      <div class="avatar"></div>
+      <div>
+        <h3>${item.beans > 0 ? '+' : ''}${item.beans} 豆子</h3>
+        <p>${item.roleName || '系统'} · ${new Date(item.createdAt).toLocaleString()}</p>
+        <p>${item.summary || ''}</p>
+      </div>
+    </div>
+  `).join('');
+};
+
+const renderRoleSwitcher = () => {
+  const wrap = $('#roleSwitcher');
+  if (!state.roles.length) {
+    wrap.innerHTML = '<div class="empty-state">还没有角色，请先到“角色”页新建。</div>';
+    return;
+  }
+  wrap.innerHTML = state.roles.map((role) => `
+    <button class="role-chip ${role.id === state.activeRoleId ? 'active' : ''}" data-switch-role="${role.id}" type="button">
+      <img class="avatar" src="${avatarOf(role.name, role.avatar)}" alt="${role.name}" />
+      <span>${role.name}</span>
+    </button>
+  `).join('');
+};
+
+const renderMessages = () => {
+  const list = $('#messageList');
+  const role = activeRole();
+  const allMessages = role ? getMessages(role.id) : [];
+  const zone = state.chatZone || 'online';
+  const messages = allMessages.filter(m => (m.zone || 'online') === zone);
+
+  if (!role) {
+    list.innerHTML = '<div class="empty-state">暂无角色。请先创建角色，开始你的第一段对话。</div>';
+    return;
+  }
+
+  if (!messages.length) {
+    list.innerHTML = `<div class="empty-state">${zone === 'online' ? '开始和「' + role.name + '」聊天吧。' : '线下区暂无消息。'}</div>`;
+    return;
+  }
+
+  list.innerHTML = messages.map((msg) => {
+    let bubbleContent = '';
+    if (msg.type === 'image') {
+      bubbleContent = '<img class="chat-img" src="' + escapeHtml(msg.mediaUrl || msg.content) + '" alt="图片" onclick="window.open(this.src)" />';
+    } else if (msg.type === 'file') {
+      bubbleContent = '<div class="chat-file-card"><span class="file-icon">&#128196;</span><span class="file-name">' + escapeHtml(msg.fileName || '文件') + '</span></div>';
+    } else if (msg.type === 'redpacket') {
+      var rpData = msg.redpacketData || {};
+      bubbleContent = '<div class="chat-redpacket"><div class="rp-amount">¥' + escapeHtml(rpData.amount || '0.00') + '</div><div class="rp-note">' + escapeHtml(rpData.note || '恭喜发财') + '</div><div class="rp-label">红包</div></div>';
+    } else {
+      bubbleContent = escapeHtml(msg.content);
+    }
+    return '<div class="message-row ' + msg.role + '" data-msg-id="' + msg.id + '">'
+      + '<img class="avatar" src="' + (msg.role === 'user' ? avatarOf(state.user.nickname, state.user.avatar) : avatarOf(role.name, role.avatar)) + '" alt="" />'
+      + '<div class="chat-bubble">' + bubbleContent + '</div>'
+      + '</div>';
+  }).join('');
+  renderRoleStatus();
+  requestAnimationFrame(() => {
+    const chat = $('#chatContainer');
+    if (chat) chat.scrollTop = chat.scrollHeight;
+  });
+  /* Update reply button state */
+  if (typeof updateReplyButton === 'function') updateReplyButton();
+};
+
+const renderRoles = () => {
+  const list = $('#myRolesList');
+  const roles = [...state.roles].sort((a, b) => b.createdAt - a.createdAt);
+  if (!roles.length) {
+    list.innerHTML = '<div class="empty-state">暂无角色，点击右上角“新建”创建你的第一个角色。</div>';
+    return;
+  }
+
+  list.innerHTML = roles.map((role) => `
+    <article class="role-card">
+      <img class="avatar" src="${avatarOf(role.name, role.avatar)}" alt="${role.name}" />
+      <div>
+        <h3>${role.name}</h3>
+        <p>${role.description || '暂无简介'}</p>
+        <p>${role.isPublic ? '公开角色' : '私密角色'} · ${new Date(role.createdAt).toLocaleDateString()}</p>
+        <div class="card-actions">
+          <button data-chat-role="${role.id}" type="button">聊天</button>
+          <button data-edit-role="${role.id}" type="button">编辑</button>
+          <button data-clear-chat="${role.id}" type="button">删除对话</button>
+        </div>
+      </div>
+    </article>
+  `).join('');
+};
+
+const renderProfile = () => {
+  $('#userNicknameInput').value = state.user.nickname;
+  $('#userBioInput').value = state.user.bio;
+  if ($('#userRelationsInput')) $('#userRelationsInput').value = state.user.relations || '';
+  $('#userAvatarPreview').src = avatarOf(state.user.nickname, state.user.avatar);
+  /* Update profile header display */
+  const headerAvatar = $('#profileHeaderAvatar');
+  const headerName = $('#profileHeaderName');
+  const headerBio = $('#profileHeaderBio');
+  if (headerAvatar) headerAvatar.src = avatarOf(state.user.nickname, state.user.avatar);
+  if (headerName) headerName.textContent = state.user.nickname || '体验用户';
+  if (headerBio) headerBio.textContent = state.user.bio || '点击下方编辑个人资料~';
+};
+
+const renderMemoryRoleOptions = () => {
+  const select = $('#memoryRoleSelect');
+  if (!select) return;
+  const current = select.value || state.activeRoleId || '';
+  select.innerHTML = '<option value="">全部角色通用</option>' + state.roles.map((role) => `
+    <option value="${role.id}">${escapeHtml(role.name)}</option>
+  `).join('');
+  select.value = state.roles.some((role) => role.id === current) ? current : '';
+};
+
+const renderMemories = async () => {
+  renderTimeline();
+  const list = $('#memoryList');
+  if (!list) return;
+  renderMemoryRoleOptions();
+  list.innerHTML = '<div class="empty-state">正在加载记忆...</div>';
+  try {
+    const roleId = $('#memoryRoleSelect')?.value || '';
+    const data = await api.listMemories(roleId);
+    memoryCache = mergeMemories(data.list || [], getLocalMemories(roleId));
+    if (!memoryCache.length) {
+      list.innerHTML = '<div class="empty-state">还没有记忆。你可以手动新增，也可以在聊天时让系统自动沉淀。</div>';
+      return;
+    }
+    list.innerHTML = memoryCache.map((item) => `
+      <article class="memory-card">
+        <h3>${escapeHtml(item.type || '记忆')} · ${escapeHtml(item.roleName || '全部角色')}</h3>
+        <p>${escapeHtml(item.content || '')}</p>
+        <div class="memory-meta">${item.source === 'auto' ? '自动记忆' : '手动记忆'} · ${new Date(item.updatedAt || item.createdAt).toLocaleString()}</div>
+        <div class="card-actions"><button data-delete-memory="${item.id}" type="button">删除记忆</button></div>
+      </article>
+    `).join('');
+  } catch (error) {
+    list.innerHTML = `<div class="empty-state">${escapeHtml(error.message || '记忆加载失败')}</div>`;
+  }
+};
+
+const saveMemory = async () => {
+  const content = $('#memoryContentInput').value.trim();
+  if (!content) return toast('请先填写记忆内容。');
+  const roleId = $('#memoryRoleSelect').value;
+  const role = state.roles.find((item) => item.id === roleId);
+  try {
+    const savedMemory = await api.createMemory({
+      roleId,
+      roleName: role?.name || '全部角色',
+      type: $('#memoryTypeSelect').value,
+      content,
+      source: 'manual'
+    });
+    rememberLocalMemory(savedMemory);
+    $('#memoryContentInput').value = '';
+    await renderMemories();
+    toast('记忆已保存。');
+  } catch (error) {
+    toast(error.message || '保存记忆失败。');
+  }
+};
+
+const renderRechargePackages = () => {
+  const wrap = $('#rechargePackages');
+  wrap.innerHTML = billingConfig.rechargePackages.map((item) => `
+    <button class="package-card" data-recharge="${item.amount}" type="button">
+      ${item.amount} 元<br><small>${item.beans} 豆子</small>
+    </button>
+  `).join('');
+};
+
+const renderCommunity = async () => {
+  const wrap = $('#communityList');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="empty-state">正在加载...</div>';
+  try {
+    const keyword = $('#communitySearch') ? $('#communitySearch').value.trim() : '';
+    let data = await api.listCommunityRoles(keyword);
+    let roles = data.list || [];
+    const tab = state.communityTab || 'official';
+    if (tab === 'official') {
+      roles = roles.filter(r => r.ownerId === 'system' || r.isOfficial);
+    } else if (tab === 'user') {
+      roles = roles.filter(r => r.ownerId !== 'system' && r.isPublic);
+    } else if (tab === 'mine') {
+      roles = roles.filter(r => r.ownerId === CONFIG.userId);
+    }
+    if (!roles.length) {
+      wrap.innerHTML = '<div class="empty-state">社区暂无匹配角色，换个关键词试试。</div>';
+      return;
+    }
+    wrap.innerHTML = data.list.map((role) => `
+      <article class="community-card">
+        <img class="avatar" src="${avatarOf(role.name, role.avatar)}" alt="${role.name}" />
+        <div>
+          <h3>${role.name}</h3>
+          <p>${role.description}</p>
+          <p>上传者：${role.uploaderNickname} · 热度 ${role.heat}</p>
+          <div class="card-actions">
+            <button data-import-role='${encodeURIComponent(JSON.stringify(role))}' type="button">一键导入</button>
+            <button data-view-role='${encodeURIComponent(JSON.stringify(role))}' type="button">详情</button>
+          </div>
+        </div>
+      </article>
+    `).join('');
+  } catch (error) {
+    wrap.innerHTML = `<div class="empty-state">${error.message}</div>`;
+  }
+};
+
+const renderCostumeEditor = (mode = 'page') => {
+  $$('.tabs [data-costume-mode]').forEach((btn) => btn.classList.toggle('active', btn.dataset.costumeMode === mode));
+  const wrap = $('#costumeEditorWrap');
+  if (mode === 'wallpaper') {
+    wrap.innerHTML = `
+      <div class="panel">
+        <h3>自定义聊天壁纸</h3>
+        <p class="muted">上传图片仅保存在本地浏览器，CSS 只作用于 .chat-container 背景。</p>
+        <input id="wallpaperInput" type="file" accept="image/*" />
+        <textarea id="wallpaperCssInput" class="code-editor" placeholder="${examples.wallpaper}">${state.costumes.wallpaperCss || ''}</textarea>
+        <div class="wallpaper-preview"></div>
+        <div class="card-actions">
+          <button id="saveWallpaperButton" type="button">保存并预览</button>
+          <button id="resetWallpaperButton" type="button">恢复默认壁纸</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  const key = mode === 'bubble' ? 'bubbleCss' : 'pageCss';
+  wrap.innerHTML = `
+    <div class="panel">
+      <h3>${mode === 'bubble' ? '自定义聊天气泡' : '自定义页面 UI'}</h3>
+      <p class="muted">${mode === 'bubble' ? 'CSS 会被限制在 .chat-bubble 范围内，不影响其他模块。' : '页面 UI CSS 会全局覆盖默认样式，请仅粘贴纯 CSS。'}</p>
+      <textarea id="cssEditor" class="code-editor" spellcheck="false" placeholder="${examples[mode]}">${state.costumes[key] || ''}</textarea>
+      <div class="card-actions">
+        <button id="saveCssButton" data-css-key="${key}" type="button">保存并预览</button>
+        <button id="resetCssButton" data-css-key="${key}" type="button">重置默认</button>
+      </div>
+    </div>
+  `;
+};
+
+const openRoleDialog = (roleId = null) => {
+  editingRoleId = roleId;
+  const role = state.roles.find((item) => item.id === roleId) || {};
+  $('#roleDialogTitle').textContent = roleId ? '编辑角色' : '新建角色';
+  $('#roleNameInput').value = role.name || '';
+  $('#roleDescriptionInput').value = role.description || '';
+  $('#rolePromptInput').value = role.prompt || '';
+  $('#rolePublicInput').checked = Boolean(role.isPublic);
+  $('#roleAvatarPreview').src = avatarOf(role.name || '新角色', role.avatar);
+  $('#deleteRoleButton').style.display = roleId ? 'inline-flex' : 'none';
+  $('#roleDialog').showModal();
+};
+
+const saveRole = async (event) => {
+  event.preventDefault();
+  const current = state.roles.find((item) => item.id === editingRoleId);
+  const role = {
+    id: editingRoleId || crypto.randomUUID(),
+    name: $('#roleNameInput').value.trim(),
+    description: $('#roleDescriptionInput').value.trim(),
+    prompt: $('#rolePromptInput').value.trim(),
+    avatar: $('#roleAvatarPreview').dataset.value || current?.avatar || '',
+    isPublic: $('#rolePublicInput').checked,
+    createdAt: current?.createdAt || Date.now()
+  };
+
+  if (!role.name || !role.description || !role.prompt) {
+    toast('请完整填写角色名称、简介和人设。');
+    return;
+  }
+
+  if (current) {
+    Object.assign(current, role);
+  } else {
+    state.roles.unshift(role);
+    state.activeRoleId = role.id;
+  }
+
+  if (role.isPublic) {
+    await api.publishRole({ ...role, uploaderNickname: state.user.nickname }).catch((error) => toast(error.message));
+  }
+
+  persist();
+  $('#roleDialog').close();
+  renderAll();
+  toast('角色已保存。');
+};
+
+const deleteRole = async () => {
+  if (!editingRoleId) return;
+  if (!confirm('确认删除该角色？对应对话历史和自动记忆也会同步删除。')) return;
+  await api.cleanupMemories({ roleId: editingRoleId, sourceConversationId: editingRoleId }).catch(() => null);
+  state.roles = state.roles.filter((role) => role.id !== editingRoleId);
+  delete state.conversations[editingRoleId];
+  state.activeRoleId = state.roles[0]?.id || '';
+  if (!state.chatZone) state.chatZone = 'online';
+  persist();
+  $('#roleDialog').close();
+  renderAll();
+  renderMemories();
+  toast('角色已删除。');
+};
+
+/* Image compression function (like JRSY) */
+const compressImage = (source, options = {}) => {
+  const { quality = 0.7, maxWidth = 800, maxHeight = 800 } = options;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > height) {
+        if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
+      } else {
+        if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = reject;
+    if (source instanceof File) {
+      img.src = URL.createObjectURL(source);
+    } else {
+      img.src = source;
+    }
+  });
+};
+
+const sendSpecialMessage = async (type, content, extra = {}) => {
+  const role = activeRole();
+  if (!role) return toast('请先选择角色。');
+  const zone = state.chatZone || 'online';
+  const messages = getMessages(role.id);
+
+  let messageContent = content;
+  let aiContent = content;
+
+  /* For images: compress and prepare multimodal format */
+  if (type === 'image') {
+    try {
+      toast('正在处理图片...');
+      const compressed = await compressImage(content, { quality: 0.7, maxWidth: 800 });
+      messageContent = compressed;
+      /* Multimodal format for AI */
+      aiContent = [
+        { type: "text", text: "[用户发送了一张图片]" },
+        { type: "image_url", image_url: { url: compressed } }
+      ];
+    } catch (err) {
+      toast('图片处理失败：' + err.message);
+      return;
+    }
+  } else if (type === 'file') {
+    aiContent = '[用户发送了文件: ' + (extra.fileName || '未知文件') + ']';
+  }
+
+  const userMessage = {
+    id: crypto.randomUUID(),
+    role: 'user',
+    content: messageContent,
+    type,
+    zone,
+    createdAt: Date.now(),
+    ...extra
+  };
+  messages.push(userMessage);
+  persist();
+  renderMessages();
+
+  /* Trigger AI response for image and file */
+  if (type === 'image' || type === 'file') {
+    const assistantMessage = { id: crypto.randomUUID(), role: 'assistant', content: '', createdAt: Date.now() };
+    messages.push(assistantMessage);
+    isReplying = true;
+    currentAbortController = new AbortController();
+    const localAbortController = currentAbortController;
+    renderMessages();
+    appendTyping();
+
+    /* Build messages array with multimodal support */
+    const aiMessages = messages.filter(item => item.content).map(item => {
+      if (item.id === userMessage.id) {
+        /* Use multimodal format for the current image message */
+        return { role: 'user', content: aiContent };
+      }
+      /* For other messages, use string content */
+      return { role: item.role, content: typeof item.content === 'string' ? item.content : String(item.content || '') };
+    });
+
+    api.streamChat({
+      roleId: role.id,
+      conversationId: role.id,
+      roleName: role.name,
+      rolePrompt: role.prompt,
+      sourceMessageIds: [userMessage.id],
+      messages: aiMessages
+    }, {
+      charged: (data) => { serverUser.beans = data.beans; $('#beansBadge').textContent = `豆子 ${data.beans}`; },
+      delta: (data) => { if (!isReplying) return; assistantMessage.content += data.content; persist(); renderMessages(); },
+      error: (data) => { assistantMessage.content = data.message; toast(data.message); },
+      memory: () => {}
+    }, localAbortController.signal).then(() => {
+      isReplying = false;
+      renderMessages();
+    }).catch(err => {
+      if (err.name !== 'AbortError') { assistantMessage.content = '请求失败，请稍后再试。'; toast(err.message); }
+      isReplying = false;
+      renderMessages();
+    });
+  }
+};
+
+const sendMessage = async (event) => {
+  event.preventDefault();
+
+  const role = activeRole();
+  const input = $('#messageInput');
+  const content = input.value.trim();
+  if (!role) return toast('请先创建或选择一个角色。');
+  if (!content) return;
+
+  const messages = getMessages(role.id);
+  const userMessage = { id: uuid(), role: 'user', content, zone: state.chatZone || 'online', replied: false, createdAt: Date.now() };
+  messages.push(userMessage);
+  input.value = '';
+  persist();
+  renderMessages();
+};
+
+/* Reply button - only this triggers AI response */
+const replyToMessage = async (msgId) => {
+  if (isReplying) {
+    currentAbortController?.abort();
+    toast('已打断上一条回复。');
+  }
+
+  const role = activeRole();
+  if (!role) return toast('请先选择角色。');
+  const messages = getMessages(role.id);
+  const userMessage = messages.find(m => m.id === msgId);
+  if (!userMessage) return;
+
+  /* Mark as replied */
+  userMessage.replied = true;
+  persist();
+  renderMessages();
+
+  const assistantMessage = { id: uuid(), role: 'assistant', content: '', zone: state.chatZone || 'online', createdAt: Date.now() };
+  messages.push(assistantMessage);
+
+  /* Offline mode: don't call AI, just save */
+  if (state.chatZone === 'offline') {
+    persist();
+    renderMessages();
+    toast('线下模式：消息已保存，不会发送给AI');
+    return;
+  }
+
+  isReplying = true;
+  currentAbortController = new AbortController();
+  const localAbortController = currentAbortController;
+  renderMessages();
+  appendTyping();
+
+  try {
+    await api.streamChat({
+      roleId: role.id,
+      conversationId: role.id,
+      roleName: role.name,
+      rolePrompt: role.prompt,
+      sourceMessageIds: [userMessage.id],
+      messages: (() => {
+        const baseMsgs = messages.filter((item) => item.content).map((item) => ({ role: item.role, content: item.content }));
+        /* Time perception: inject current time as system message if enabled */
+        const sfSettings = (() => { try { return JSON.parse(localStorage.getItem('sfState') || '{}').settings || {}; } catch(e) { return {}; } })();
+        if (sfSettings.timePerception) {
+          const now = new Date();
+          const timeInfo = '[系统提示：当前时间为' + now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日 ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0') + '，请在回复中自然地体现对时间的感知]';
+          baseMsgs.unshift({ role: 'system', content: timeInfo });
+        }
+        return baseMsgs;
+      })()
+    }, {
+      charged: (data) => {
+        serverUser.beans = data.beans;
+        $('#beansBadge').textContent = `豆子 ${data.beans}`;
+      },
+      delta: (data) => {
+        if (!isReplying) return;
+        assistantMessage.content += data.content;
+        persist();
+        renderMessages();
+      },
+      error: (data) => {
+        assistantMessage.content = data.message;
+        toast(data.message);
+      },
+      memory: (data) => {
+        memoryCache.unshift(data);
+        rememberLocalMemory(data);
+        toast('已自动加入一条记忆。');
+        renderMemories();
+      }
+    }, localAbortController.signal);
+    updateRoleAfterChat(role, content, assistantMessage.content);
+    renderRoleStatus();
+    renderTimeline();
+    renderMemories();
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      assistantMessage.content = assistantMessage.content || '回复已被打断。';
+    } else {
+      assistantMessage.content = '请求失败，请稍后再试。';
+      toast(error.message);
+    }
+  } finally {
+    if (currentAbortController === localAbortController) {
+      isReplying = false;
+      currentAbortController = null;
+    }
+    if (!assistantMessage.content.trim()) {
+      assistantMessage.content = 'AI 暂时没有返回内容，本次没有生成有效回复。请再试一次。';
+    }
+    persist();
+    renderMessages();
+    refreshServerUser();
+  }
+};
+
+const appendTyping = () => {
+  const list = $('#messageList');
+  const row = document.createElement('div');
+  row.className = 'message-row assistant';
+  row.innerHTML = '<div class="avatar"></div><div class="chat-bubble"><span class="typing-dot"><i></i><i></i><i></i></span></div>';
+  list.appendChild(row);
+  $('#chatContainer').scrollTop = $('#chatContainer').scrollHeight;
+};
+
+const escapeHtml = (text) => String(text)
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#039;');
+
+const renderAll = () => {
+  renderRoleSwitcher();
+  renderMessages();
+  renderRoles();
+  renderProfile();
+  renderRechargePackages();
+  renderMemoryRoleOptions();
+  renderRoleStatus();
+  renderTimeline();
+  renderPhoneDesktop();
+};
+
+const exportBackup = async () => {
+  try {
+    const serverData = await api.exportUserData().catch(() => ({
+      userId: CONFIG.userId,
+      beans: serverUser.beans,
+      transactions: serverUser.transactions || [],
+      memories: memoryCache || []
+    }));
+    const backup = {
+      app: 'Mochi-phone',
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      userId: CONFIG.userId,
+      localState: state,
+      serverData
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `mochi-phone-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast('数据备份已导出，请保存好这个 JSON 文件。');
+  } catch (error) {
+    toast(error.message || '导出失败，请稍后重试。');
+  }
+};
+
+const importBackupFile = async (file) => {
+  try {
+    const text = await file.text();
+    const backup = JSON.parse(text);
+    if (backup.app !== 'Mochi-phone' || !backup.localState) {
+      throw new Error('这不是有效的 Mochi-phone 备份文件。');
+    }
+    if (!confirm('导入后会覆盖当前浏览器里的角色、对话、装扮和豆子数据，确认继续？')) return;
+
+    const importedUserId = backup.userId || backup.serverData?.userId;
+    if (importedUserId) {
+      localStorage.setItem('mochi_phone_user_id', importedUserId);
+    }
+    saveState(backup.localState);
+    if (backup.serverData) {
+      await api.importUserData({
+        userId: importedUserId,
+        beans: backup.serverData.beans,
+        transactions: backup.serverData.transactions || [],
+        memories: backup.serverData.memories || []
+      }).catch(() => null);
+    }
+    toast('导入成功，页面即将刷新。');
+    setTimeout(() => location.reload(), 900);
+  } catch (error) {
+    toast(error.message || '导入失败，请确认文件是否正确。');
+  }
+};
+
+const bindEvents = () => {
+  $('.bottom-nav').addEventListener('click', (event) => {
+    const btn = event.target.closest('[data-page]');
+    if (!btn) return;
+    $$('.page').forEach((page) => page.classList.toggle('active', page.id === btn.dataset.page));
+    $$('.bottom-nav button').forEach((item) => item.classList.toggle('active', item === btn));
+    $('#pageTitle').textContent = btn.textContent;
+    if (btn.dataset.page === 'communityPage') renderCommunity();
+    if (btn.dataset.page === 'phonePage') renderPhoneDesktop();
+    if (btn.dataset.page === 'memoryPage') renderMemories();
+  });
+
+  /* 人设社区 tab 切换 */
+  document.addEventListener('click', (e) => {
+    const commTab = e.target.closest('[data-comm-tab]');
+    if (commTab) {
+      const tab = commTab.dataset.commTab;
+      document.querySelectorAll('.comm-tab').forEach((t) => {
+        t.classList.toggle('active', t === commTab);
+        if (t === commTab) {
+          t.style.background = '#FF6B9D';
+          t.style.color = '#fff';
+          t.style.border = 'none';
+        } else {
+          t.style.background = '#fff';
+          t.style.color = '#666';
+          t.style.border = '1px solid #ddd';
+        }
+      });
+      state.communityTab = tab;
+      renderCommunity();
+    }
+    /* 创建人设按钮 - 弹窗 */
+    const createBtn = e.target.closest('#communityCreateBtn');
+    if (createBtn) {
+      sfOpenCreatePersonaModal();
+    }
+  });
+
+  document.addEventListener('click', async (event) => {
+    const phoneAppBtn = event.target.closest('[data-phone-app]');
+    if (phoneAppBtn) {
+      renderPhoneApp(phoneAppBtn.dataset.phoneApp);
+      return;
+    }
+
+    const closePhoneAppBtn = event.target.closest('[data-close-phone-app]');
+    if (closePhoneAppBtn) {
+      $('#phoneAppPanel')?.classList.add('hidden');
+      return;
+    }
+
+    const openCommunityBtn = event.target.closest('[data-open-community]');
+    if (openCommunityBtn) {
+      $$('.page').forEach((page) => page.classList.toggle('active', page.id === 'communityPage'));
+      $$('.bottom-nav button').forEach((item) => item.classList.remove('active'));
+      $('#pageTitle').textContent = '社区';
+      renderCommunity();
+      return;
+    }
+
+    const proactiveBtn = event.target.closest('[data-proactive-message]');
+    if (proactiveBtn) {
+      addProactiveMessage();
+      return;
+    }
+
+    const switchBtn = event.target.closest('[data-switch-role]');
+    if (switchBtn) {
+      state.activeRoleId = switchBtn.dataset.switchRole;
+      persist();
+      renderRoleSwitcher();
+      renderMessages();
+      renderRoleStatus();
+      renderTimeline();
+    }
+
+    const chatBtn = event.target.closest('[data-chat-role]');
+    if (chatBtn) {
+      state.activeRoleId = chatBtn.dataset.chatRole;
+      persist();
+      $('.bottom-nav [data-page="chatPage"]').click();
+    }
+
+    const editBtn = event.target.closest('[data-edit-role]');
+    if (editBtn) openRoleDialog(editBtn.dataset.editRole);
+
+    const clearBtn = event.target.closest('[data-clear-chat]');
+    if (clearBtn && confirm('确认删除当前角色的全部对话？由这些对话自动生成的记忆也会同步删除。')) {
+      const roleId = clearBtn.dataset.clearChat;
+      const removedIds = (state.conversations[roleId] || []).map((item) => item.id).filter(Boolean);
+      const result = await api.cleanupMemories({ roleId, sourceConversationId: roleId, sourceMessageIds: removedIds }).catch(() => ({ deleted: 0 }));
+      state.conversations[roleId] = [];
+      persist();
+      renderMessages();
+      renderMemories();
+      toast(`对话已删除，已清理 ${result.deleted || 0} 条关联记忆。`);
+    }
+
+    const deleteMemoryBtn = event.target.closest('[data-delete-memory]');
+    if (deleteMemoryBtn && confirm('确认删除这条记忆？')) {
+      await api.deleteMemory(deleteMemoryBtn.dataset.deleteMemory).catch(() => null);
+      forgetLocalMemory(deleteMemoryBtn.dataset.deleteMemory);
+      await renderMemories();
+      toast('记忆已删除。');
+    }
+
+    const importBtn = event.target.closest('[data-import-role]');
+    if (importBtn) {
+      const role = JSON.parse(decodeURIComponent(importBtn.dataset.importRole));
+      const localRole = { ...role, id: crypto.randomUUID(), isPublic: false, createdAt: Date.now() };
+      state.roles.unshift(localRole);
+      state.activeRoleId = localRole.id;
+      persist();
+      renderAll();
+      toast('已导入到我的角色，可自由编辑。');
+    }
+
+    const viewBtn = event.target.closest('[data-view-role]');
+    if (viewBtn) {
+      const role = JSON.parse(decodeURIComponent(viewBtn.dataset.viewRole));
+      alert(`${role.name}\\n\\n${role.description}\\n\\n人设：\\n${role.prompt}\\n\\n上传时间：${new Date(role.createdAt).toLocaleString()}`);
+    }
+
+    const rechargeBtn = event.target.closest('[data-recharge]');
+    if (rechargeBtn) {
+      const amount = Number(rechargeBtn.dataset.recharge);
+      const item = billingConfig.rechargePackages.find((pkg) => pkg.amount === amount);
+      await api.recharge(item);
+      toast('模拟充值成功。');
+      refreshServerUser();
+    }
+
+    const costumeEntry = event.target.closest('[data-costume-tab]');
+    if (costumeEntry) {
+      $('.bottom-nav [data-page="profilePage"]').classList.remove('active');
+      $$('.page').forEach((page) => page.classList.toggle('active', page.id === 'costumePage'));
+      $('#pageTitle').textContent = '自定义装扮';
+      renderCostumeEditor(costumeEntry.dataset.costumeTab);
+    }
+  });
+
+  /* Story length selection */
+  document.addEventListener('click', (e) => {
+    const lengthOpt = e.target.closest('.novel-length-option');
+    if (lengthOpt) {
+      document.querySelectorAll('.novel-length-option').forEach(opt => opt.classList.remove('active'));
+      lengthOpt.classList.add('active');
+      const radio = lengthOpt.querySelector('input[type="radio"]');
+      if (radio) radio.checked = true;
+      novelState.storyLength = lengthOpt.dataset.length;
+      toast('剧情字数已设置为：' + (lengthOpt.querySelector('.novel-length-label').textContent));
+    }
+  });
+
+  $('#newRoleButton').addEventListener('click', () => openRoleDialog());
+  $('#roleForm').addEventListener('submit', saveRole);
+  $('#deleteRoleButton').addEventListener('click', deleteRole);
+  $('#saveMemoryButton').addEventListener('click', saveMemory);
+  $('#refreshMemoryButton').addEventListener('click', renderMemories);
+  $('#memoryRoleSelect').addEventListener('change', renderMemories);
+  $$('[data-close-dialog]').forEach((btn) => btn.addEventListener('click', () => $('#roleDialog').close()));
+  $('#chatForm').addEventListener('submit', sendMessage);
+
+  /* Inline reply button - reply to the latest unreplied user message */
+  const replyButton = document.getElementById('replyButton');
+  const updateReplyButton = () => {
+    const role = activeRole();
+    if (!role) { replyButton.disabled = true; return; }
+    const messages = getMessages(role.id);
+    const zone = state.chatZone || 'online';
+    const hasUnreplied = messages.some(m => m.role === 'user' && !m.replied && m.zone === zone);
+    replyButton.disabled = !hasUnreplied;
+  };
+  replyButton.addEventListener('click', () => {
+    const role = activeRole();
+    if (!role || replyButton.disabled) return;
+    const messages = getMessages(role.id);
+    const zone = state.chatZone || 'online';
+    /* Find the latest unreplied user message */
+    const unreplied = messages.filter(m => m.role === 'user' && !m.replied && m.zone === zone);
+    if (unreplied.length > 0) {
+      const latestMsg = unreplied[unreplied.length - 1];
+      replyToMessage(latestMsg.id);
+    }
+  });
+
+
+  /* Chat zone tabs */
+  document.querySelectorAll('#chatZoneTabs .chat-zone-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('#chatZoneTabs .chat-zone-tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      state.chatZone = this.dataset.chatZone;
+      /* Show/hide offline indicator */
+      const indicator = $('#chatOfflineIndicator');
+      if (indicator) {
+        indicator.style.display = state.chatZone === 'offline' ? 'flex' : 'none';
+      }
+      renderMessages();
+    });
+  });
+
+  /* Chat + button - WeChat style */
+  const chatPlusBtn = $('#chatPlusBtn');
+  const chatPlusPanel = $('#chatPlusPanel');
+  const chatImgInput = $('#chatImgInput');
+  const chatFileInput = $('#chatFileInput');
+
+  if (chatPlusBtn) chatPlusBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (chatPlusPanel) {
+      const isVisible = chatPlusPanel.style.display !== 'none';
+      chatPlusPanel.style.display = isVisible ? 'none' : 'block';
+    }
+  });
+
+  /* Close panel when clicking outside */
+  document.addEventListener('click', (e) => {
+    if (chatPlusPanel && !chatPlusPanel.contains(e.target) && e.target !== chatPlusBtn) {
+      chatPlusPanel.style.display = 'none';
+    }
+  });
+
+  /* + panel items */
+  $('#chatPlusImg')?.addEventListener('click', () => {
+    chatPlusPanel.style.display = 'none';
+    chatImgInput.click();
+  });
+  $('#chatPlusFile')?.addEventListener('click', () => {
+    chatPlusPanel.style.display = 'none';
+    chatFileInput.click();
+  });
+  $('#chatPlusRedPacket')?.addEventListener('click', () => {
+    chatPlusPanel.style.display = 'none';
+    const role = activeRole();
+    if (!role) return toast('请先选择角色。');
+    const amount = prompt('请输入红包金额（元）：', '6.66');
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) return;
+    const note = prompt('红包留言（可选）：', '恭喜发财') || '恭喜发财';
+    sendSpecialMessage('redpacket', '', { redpacketData: { amount: Number(amount).toFixed(2), note } });
+  });
+
+  if (chatImgInput) chatImgInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const role = activeRole();
+    if (!role) return toast('请先选择角色。');
+    /* Read file and send (compression happens in sendSpecialMessage) */
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      sendSpecialMessage('image', ev.target.result, { mediaUrl: ev.target.result });
+    };
+    reader.readAsDataURL(file);
+    chatImgInput.value = '';
+  });
+
+  if (chatFileInput) chatFileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const role = activeRole();
+    if (!role) return toast('请先选择角色。');
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      sendSpecialMessage('file', file.name, { mediaUrl: ev.target.result, fileName: file.name });
+    };
+    reader.readAsDataURL(file);
+    chatFileInput.value = '';
+  });
+  $('#communitySearchButton').addEventListener('click', renderCommunity);
+
+  $('#saveProfileButton').addEventListener('click', async () => {
+    state.user.nickname = $('#userNicknameInput').value.trim() || '体验用户';
+    state.user.bio = $('#userBioInput').value.trim();
+    state.user.relations = $('#userRelationsInput') ? $('#userRelationsInput').value.trim() : '';
+    persist();
+    renderAll();
+    toast('个人资料已保存。');
+    try {
+      await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Id': CONFIG.userId },
+        body: JSON.stringify({ nickname: state.user.nickname, bio: state.user.bio, avatar: state.user.avatar || '', relations: state.user.relations || '' })
+      });
+      /* 同步到 localStorage 供论坛/同人模块读取 */
+      try {
+        var saved = localStorage.getItem('sf_user_profile');
+        var parsed = saved ? JSON.parse(saved) : {};
+        parsed.displayName = state.user.nickname;
+        parsed.bio = state.user.bio;
+        parsed.relations = state.user.relations;
+        if (state.user.avatar) parsed.avatar = state.user.avatar;
+        localStorage.setItem('sf_user_profile', JSON.stringify(parsed));
+      } catch(e) {}
+    } catch (e) { /* server sync optional */ }
+  });
+
+  $('#exportDataButton').addEventListener('click', exportBackup);
+  $('#importDataButton').addEventListener('click', () => $('#importDataInput').click());
+  $('#importDataInput').addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) await importBackupFile(file);
+  });
+
+  $('#clearCacheButton').addEventListener('click', () => {
+    if (!confirm('确认清空所有本地缓存数据？此操作不可恢复，建议先用「导出数据备份」保存数据。')) return;
+    /* 清除所有 localStorage 键 */
+    var keysToRemove = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (k) keysToRemove.push(k);
+    }
+    keysToRemove.forEach(function(k) { localStorage.removeItem(k); });
+    clearState();
+    state = loadState();
+    persist();
+    renderAll();
+    toast('本地缓存已全部清空。');
+  });
+
+  $('#roleAvatarInput').addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const dataUrl = await readFileAsDataUrl(file);
+    $('#roleAvatarPreview').src = dataUrl;
+    $('#roleAvatarPreview').dataset.value = dataUrl;
+  });
+
+  $('#userAvatarInput').addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    state.user.avatar = await readFileAsDataUrl(file);
+    persist();
+    renderProfile();
+    try {
+      await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-User-Id': CONFIG.userId },
+        body: JSON.stringify({ nickname: state.user.nickname, bio: state.user.bio, avatar: state.user.avatar })
+      });
+      /* 同步到 localStorage 供论坛/同人模块读取 */
+      try {
+        var _saved = localStorage.getItem('sf_user_profile');
+        var _parsed = _saved ? JSON.parse(_saved) : {};
+        _parsed.displayName = state.user.nickname;
+        _parsed.bio = state.user.bio;
+        if (state.user.avatar) _parsed.avatar = state.user.avatar;
+        localStorage.setItem('sf_user_profile', JSON.stringify(_parsed));
+      } catch(e) {}
+    } catch (e) { /* server sync optional */ }
+  });
+
+  // 长按/右键气泡删除单条消息
+  let _lpTimer = null;
+  const _deleteMsg = async (msgId) => {
+    const r = activeRole();
+    if (!r) return;
+    state.conversations[r.id] = (state.conversations[r.id] || []).filter(m => m.id !== msgId);
+    await api.cleanupMemories({ roleId: r.id, sourceConversationId: r.id, sourceMessageIds: [msgId] }).catch(() => null);
+    persist(); renderMessages(); renderMemories();
+    toast('消息已删除，关联的自动记忆已清理。');
+  };
+  const msgList = $('#messageList');
+  msgList.addEventListener('contextmenu', e => {
+    const row = e.target.closest('[data-msg-id]');
+    if (row && row.dataset.msgId && confirm('确认删除这条消息？关联的自动记忆也会同步删除。')) {
+      e.preventDefault(); _deleteMsg(row.dataset.msgId);
+    }
+  });
+  msgList.addEventListener('pointerdown', e => {
+    const row = e.target.closest('[data-msg-id]');
+    if (!row || !row.dataset.msgId) return;
+    _lpTimer = setTimeout(() => {
+      if (confirm('确认删除这条消息？关联的自动记忆也会同步删除。')) _deleteMsg(row.dataset.msgId);
+    }, 600);
+  });
+  msgList.addEventListener('pointerup', () => clearTimeout(_lpTimer));
+  msgList.addEventListener('pointermove', () => clearTimeout(_lpTimer));
+  msgList.addEventListener('pointercancel', () => clearTimeout(_lpTimer));
+
+  $('#messageInput').addEventListener('input', (event) => {
+    event.target.style.height = 'auto';
+    event.target.style.height = `${Math.min(event.target.scrollHeight, 96)}px`;
+  });
+
+  $('#costumePage').addEventListener('click', async (event) => {
+    const modeBtn = event.target.closest('[data-costume-mode]');
+    if (modeBtn) renderCostumeEditor(modeBtn.dataset.costumeMode);
+
+    const saveCss = event.target.closest('#saveCssButton');
+    if (saveCss) {
+      state.costumes[saveCss.dataset.cssKey] = sanitizeCss($('#cssEditor').value);
+      persist();
+      toast('CSS 已保存并实时生效。');
+    }
+
+    const resetCss = event.target.closest('#resetCssButton');
+    if (resetCss) {
+      state.costumes[resetCss.dataset.cssKey] = '';
+      persist();
+      renderCostumeEditor(resetCss.dataset.cssKey === 'bubbleCss' ? 'bubble' : 'page');
+      toast('已恢复默认样式。');
+    }
+
+    const saveWallpaper = event.target.closest('#saveWallpaperButton');
+    if (saveWallpaper) {
+      const file = $('#wallpaperInput')?.files?.[0];
+      if (file) state.costumes.wallpaperImage = await readFileAsDataUrl(file);
+      state.costumes.wallpaperCss = sanitizeCss($('#wallpaperCssInput').value);
+      persist();
+      renderCostumeEditor('wallpaper');
+      toast('壁纸已保存。');
+    }
+
+    const resetWallpaper = event.target.closest('#resetWallpaperButton');
+    if (resetWallpaper) {
+      state.costumes.wallpaperImage = '';
+      state.costumes.wallpaperCss = '';
+      persist();
+      renderCostumeEditor('wallpaper');
+      toast('已恢复默认壁纸。');
+    }
+  });
+};
+
+const init = async () => {
+  applyCostumes(state.costumes);
+  bindEvents();
+  renderAll();
+  try {
+    billingConfig = await api.getBillingConfig();
+    renderRechargePackages();
+    await refreshServerUser();
+  } catch (error) {
+    toast(error.message);
+  }
+  /* Load profile from server (cross-device sync) */
+  try {
+    const resp = await fetch('/api/profile', { headers: { 'X-User-Id': CONFIG.userId } });
+    const data = await resp.json();
+    if (data && data.data && data.data.nickname) {
+      let changed = false;
+      if (data.data.nickname && data.data.nickname !== '体验用户' && (!state.user.nickname || state.user.nickname === '体验用户')) {
+        state.user.nickname = data.data.nickname;
+        changed = true;
+      }
+      if (data.data.bio && !state.user.bio) {
+        state.user.bio = data.data.bio;
+        changed = true;
+      }
+      if (data.data.avatar && !state.user.avatar) {
+        state.user.avatar = data.data.avatar;
+        changed = true;
+      }
+      if (changed) { persist(); renderProfile(); }
+    }
+  } catch (e) { /* server profile sync optional */ }
+};
+
+init();
+</script>
+  <script src="/forum-avatars-base64.js?v=20260726b"></script>
+  <script src="/forum.js?v=20260726b"></script>
+  <script src="/profile.js?v=20260726b"></script>
+  <script src="/novel-game.js?v=20260726b"></script>
+  </body>
+</html>
+`
