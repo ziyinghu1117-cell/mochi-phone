@@ -149,24 +149,14 @@ npm start
 
 ## 文件结构
 
-前端代码（HTML/CSS/JS）和32个文游剧本均已内嵌在 `server.js` 中，头像图片以独立文件存放在 `public/avatars/` 目录下，通过 express.static 提供静态服务：
+本项目为单文件部署，所有前端代码（HTML/CSS/JS）和32个文游剧本均已内嵌在 `server.js` 中：
 
 ```
 mochi-phone/
-├── server.js          # 主服务文件（包含内嵌前端代码）
+├── server.js          # 主服务文件（包含所有代码）
 ├── package.json       # 依赖配置
-├── package-lock.json  # 依赖锁定文件
-├── README.md          # 本文件
-└── public/
-    └── avatars/       # 角色头像图片（PNG）
-        ├── avatar1.png
-        ├── avatar2.png
-        ├── avatar3.png
-        ├── avatar4.png
-        ├── avatar5.png
-        ├── avatar6.png
-        ├── avatar7.png
-        └── avatar8.png
+├── .env.example       # 环境变量模板
+└── README.md          # 本文件
 ```
 
 ## 技术栈
