@@ -26,7 +26,15 @@ const TABLES = {
   transactions: 'transactions.json',
   community_characters: 'community.json',
   orders: 'orders.json',
-  recharge_orders: 'recharge_orders.json'
+  recharge_orders: 'recharge_orders.json',
+  // 论坛系统
+  forum_posts: 'forum_posts.json',
+  forum_comments: 'forum_comments.json',
+  forum_likes: 'forum_likes.json',
+  forum_follows: 'forum_follows.json',
+  // 同人文系统
+  fanfic_works: 'fanfic_works.json',
+  fanfic_shelf: 'fanfic_shelf.json'
 };
 
 // 内存缓存

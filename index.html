@@ -202,6 +202,27 @@
           </svg>
         </div>
       </div>
+      
+      <!-- 管理员入口（低调样式） -->
+      
+      <!-- 更多应用 -->
+      <div class="more-apps">
+        <div class="more-apps-title">更多应用</div>
+        <div class="more-apps-grid">
+          <div class="app-icon" onclick="openForum()">
+            <div class="app-icon-img forum-icon">💬</div>
+            <div class="app-icon-name">论坛</div>
+          </div>
+          <div class="app-icon" onclick="openFanfic()">
+            <div class="app-icon-img fanfic-icon">📖</div>
+            <div class="app-icon-name">同人文</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="admin-entry" id="adminEntry" onclick="openAdminLogin()">
+        管理后台
+      </div>
     </div>
 
     <!-- ==================== 底部导航栏 ==================== -->
@@ -578,7 +599,150 @@
       </div>
     </div>
 
+    <!-- ==================== 弹窗：管理员登录 ==================== -->
+    <div class="modal" id="modalAdminLogin">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>管理员登录</h3>
+          <button class="modal-close" data-modal="modalAdminLogin">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>管理员密码</label>
+            <input type="password" class="form-input" id="adminPasswordInput" placeholder="请输入管理员密码">
+          </div>
+          <button class="btn-primary btn-full" id="btnAdminLogin">登录</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== 确认对话框 ==================== -->
+
+    <!-- ==================== 论坛页面 ==================== -->
+    <div class="page page-forum" id="page-forum">
+      <div class="forum-header">
+        <div class="forum-nav">
+          <button class="forum-back-btn" onclick="goBackFromForum()">←</button>
+          <div class="forum-title">论坛</div>
+          <button class="forum-search-btn" onclick="openForumSearch()">🔍</button>
+        </div>
+        <div class="forum-tabs">
+          <div class="forum-tab active" data-tab="following" onclick="switchForumTab('following')">关注</div>
+          <div class="forum-tab" data-tab="recommended" onclick="switchForumTab('recommended')">推荐</div>
+          <div class="forum-tab" data-tab="gossip" onclick="switchForumTab('gossip')">八卦</div>
+        </div>
+      </div>
+      <div class="forum-content">
+        <div class="forum-posts" id="forumPosts">
+          <!-- 帖子列表动态生成 -->
+        </div>
+        <div class="forum-loading" id="forumLoading" style="display: none;">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 帖子详情页面 ==================== -->
+    <div class="page page-forum-detail" id="page-forum-detail">
+      <div class="forum-detail-header">
+        <button class="forum-back-btn" onclick="goBackFromForumDetail()">←</button>
+        <div class="forum-detail-title">帖子详情</div>
+        <div style="width: 32px;"></div>
+      </div>
+      <div class="forum-detail-content" id="forumDetailContent">
+        <!-- 帖子详情动态生成 -->
+      </div>
+      <div class="forum-detail-comments" id="forumDetailComments">
+        <!-- 评论列表动态生成 -->
+      </div>
+      <div class="forum-detail-input">
+        <input type="text" id="forumCommentInput" placeholder="说点什么..." class="forum-comment-input">
+        <button class="forum-comment-send" onclick="submitForumComment()">发送</button>
+      </div>
+    </div>
+
+    <!-- ==================== 同人文页面 ==================== -->
+    <div class="page page-fanfic" id="page-fanfic">
+      <div class="fanfic-header">
+        <button class="forum-back-btn" onclick="goBackFromFanfic()">←</button>
+        <div class="forum-title">同人文</div>
+        <button class="fanfic-shelf-btn" onclick="openFanficShelf()">📚</button>
+      </div>
+      <div class="fanfic-categories" id="fanficCategories">
+        <!-- 分类标签动态生成 -->
+      </div>
+      <div class="fanfic-content">
+        <div class="fanfic-grid" id="fanficGrid">
+          <!-- 作品卡片动态生成 -->
+        </div>
+        <div class="fanfic-loading" id="fanficLoading" style="display: none;">
+          <div class="loading-spinner"></div>
+          <div class="loading-text">加载中...</div>
+        </div>
+      </div>
+      <div class="fanfic-fab" onclick="openFanficGenerate()">
+        ✨ 生成
+      </div>
+    </div>
+
+    <!-- ==================== 同人文生成页面 ==================== -->
+    <div class="page page-fanfic-generate" id="page-fanfic-generate">
+      <div class="fanfic-gen-header">
+        <button class="forum-back-btn" onclick="goBackFromFanficGenerate()">←</button>
+        <div class="forum-title">生成同人文</div>
+        <div style="width: 32px;"></div>
+      </div>
+      <div class="fanfic-gen-content">
+        <div class="fanfic-gen-section">
+          <div class="fanfic-gen-label">选择角色（可选1-2个）</div>
+          <div class="fanfic-gen-characters" id="fanficGenCharacters">
+            <!-- 角色选择动态生成 -->
+          </div>
+        </div>
+        
+        <div class="fanfic-gen-section">
+          <div class="fanfic-gen-label">选择分类</div>
+          <div class="fanfic-gen-categories" id="fanficGenCategories">
+            <!-- 分类选择动态生成 -->
+          </div>
+        </div>
+        
+        <div class="fanfic-gen-section">
+          <div class="fanfic-gen-label">选择梗/套路</div>
+          <div class="fanfic-gen-tropes" id="fanficGenTropes">
+            <!-- 梗选择动态生成 -->
+          </div>
+        </div>
+        
+        <div class="fanfic-gen-section">
+          <div class="fanfic-gen-label">自定义标签（可选）</div>
+          <input type="text" id="fanficCustomTags" placeholder="用逗号分隔，如：甜宠,HE" class="fanfic-gen-input">
+        </div>
+        
+        <div class="fanfic-gen-cost">
+          生成消耗 <span class="cost-rice">10</span> 米粒
+        </div>
+        
+        <button class="fanfic-gen-btn" id="fanficGenBtn" onclick="generateFanfic()">
+          ✨ 开始生成
+        </button>
+      </div>
+    </div>
+
+    <!-- ==================== 同人文详情页面 ==================== -->
+    <div class="page page-fanfic-detail" id="page-fanfic-detail">
+      <div class="fanfic-detail-header">
+        <button class="forum-back-btn" onclick="goBackFromFanficDetail()">←</button>
+        <div class="fanfic-detail-title" id="fanficDetailTitle">作品详情</div>
+        <button class="fanfic-save-btn" id="fanficSaveBtn" onclick="toggleFanficSave()">⭐</button>
+      </div>
+      <div class="fanfic-detail-content" id="fanficDetailContent">
+        <!-- 作品详情动态生成 -->
+      </div>
+    </div>
+
     <div class="modal" id="modalConfirm">
       <div class="modal-overlay"></div>
       <div class="modal-content modal-small">

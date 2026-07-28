@@ -378,6 +378,9 @@ function setupEventListeners() {
   // 关于
   document.getElementById('menuAbout').addEventListener('click', () => openModal('modalAbout'));
 
+  // 管理员登录
+  document.getElementById('btnAdminLogin').addEventListener('click', handleAdminLogin);
+
   // 社区搜索
   document.getElementById('communitySearch').addEventListener('input', debounce(() => {
     AppState.communitySearch = document.getElementById('communitySearch').value;
@@ -1520,4 +1523,943 @@ function sanitizeCss(css) {
   sanitized = sanitized.replace(/on\w+\s*=/gi, '');
   sanitized = sanitized.replace(/expression\s*\(/gi, '');
   return sanitized;
+}
+
+// ==================== 管理员后台 ====================
+function openAdminLogin() {
+  document.getElementById('adminPasswordInput').value = '';
+  openModal('modalAdminLogin');
+}
+
+async function handleAdminLogin() {
+  const password = document.getElementById('adminPasswordInput').value.trim();
+  if (!password) {
+    showToast('请输入管理员密码');
+    return;
+  }
+  
+  const btn = document.getElementById('btnAdminLogin');
+  btn.disabled = true;
+  btn.textContent = '登录中...';
+  
+  try {
+    const res = await API.post('/api/admin/login', { password });
+    if (res.success && res.data?.token) {
+      // 保存管理员token
+      localStorage.setItem('admin_token', res.data.token);
+      showToast('登录成功');
+      closeModal('modalAdminLogin');
+      // 跳转到管理员后台
+      window.location.href = '/admin';
+    }
+  } catch (err) {
+    showToast(err.message || '登录失败');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '登录';
+  }
+}
+
+// ==================== 论坛系统 ====================
+const ForumState = {
+  currentTab: 'recommended',
+  posts: [],
+  page: 1,
+  loading: false,
+  hasMore: true,
+  currentPostId: null,
+  previousPage: 'profile'
+};
+
+// 打开论坛
+function openForum() {
+  ForumState.previousPage = AppState.currentPage;
+  showPage('forum');
+  ForumState.currentTab = 'recommended';
+  ForumState.posts = [];
+  ForumState.page = 1;
+  ForumState.hasMore = true;
+  switchForumTab('recommended');
+}
+
+// 返回上一页
+function goBackFromForum() {
+  showPage(ForumState.previousPage);
+}
+
+// 切换论坛tab
+function switchForumTab(tab) {
+  ForumState.currentTab = tab;
+  ForumState.posts = [];
+  ForumState.page = 1;
+  ForumState.hasMore = true;
+  
+  // 更新tab样式
+  document.querySelectorAll('.forum-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  
+  loadForumPosts();
+}
+
+// 加载帖子列表
+async function loadForumPosts(refresh = false) {
+  if (ForumState.loading) return;
+  if (!ForumState.hasMore && !refresh) return;
+  
+  ForumState.loading = true;
+  document.getElementById('forumLoading').style.display = 'flex';
+  
+  if (refresh) {
+    ForumState.posts = [];
+    ForumState.page = 1;
+    ForumState.hasMore = true;
+  }
+  
+  try {
+    const res = await API.get('/api/forum/posts', {
+      tab: ForumState.currentTab,
+      page: ForumState.page,
+      pageSize: 10
+    });
+    
+    if (res.success && res.data) {
+      const newPosts = res.data.list || [];
+      
+      if (newPosts.length === 0) {
+        ForumState.hasMore = false;
+      } else {
+        ForumState.posts = [...ForumState.posts, ...newPosts];
+        ForumState.page++;
+      }
+      
+      renderForumPosts();
+    }
+  } catch (err) {
+    console.error('加载帖子失败:', err);
+    // 如果是第一页加载失败，生成一些示例帖子
+    if (ForumState.page === 1) {
+      generateSamplePosts();
+    }
+  } finally {
+    ForumState.loading = false;
+    document.getElementById('forumLoading').style.display = 'none';
+  }
+}
+
+// 生成示例帖子（API失败时使用）
+function generateSamplePosts() {
+  const samplePosts = [
+    {
+      id: 1,
+      author_name: '温柔学姐',
+      author_avatar: '',
+      author_tag: '角色',
+      content: '今天在图书馆待了一下午，看了好多书～ 阳光透过窗户洒在书页上，感觉特别治愈。大家周末都在做什么呀？📚✨',
+      images: [],
+      likes: 128,
+      comments: 23,
+      saves: 45,
+      is_liked: false,
+      is_saved: false,
+      created_at: Date.now() - 3600000
+    },
+    {
+      id: 2,
+      author_name: '草莓味晚风',
+      author_avatar: '',
+      author_tag: '推荐',
+      content: '今天吃到了超好吃的草莓蛋糕！🍰 甜而不腻，奶油超级绵密～ 人生小确幸就是这么简单！#美食分享# #今日份快乐#',
+      images: [],
+      likes: 256,
+      comments: 45,
+      saves: 89,
+      is_liked: false,
+      is_saved: false,
+      created_at: Date.now() - 7200000
+    },
+    {
+      id: 3,
+      author_name: '傲娇大小姐',
+      author_avatar: '',
+      author_tag: '角色',
+      content: '哼，今天的下午茶还不错...才不是特意给你带的呢！只是买多了而已！😤 #傲娇日常#',
+      images: [],
+      likes: 312,
+      comments: 67,
+      saves: 123,
+      is_liked: false,
+      is_saved: false,
+      created_at: Date.now() - 10800000
+    }
+  ];
+  
+  ForumState.posts = samplePosts;
+  renderForumPosts();
+}
+
+// 渲染帖子列表
+function renderForumPosts() {
+  const container = document.getElementById('forumPosts');
+  
+  if (ForumState.posts.length === 0) {
+    container.innerHTML = `
+      <div class="forum-empty">
+        <div class="empty-icon">📝</div>
+        <div class="empty-text">还没有帖子</div>
+        <div class="empty-tip">下拉刷新生成新帖子</div>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = ForumState.posts.map(post => `
+    <div class="forum-post" onclick="openPostDetail(${post.id})">
+      <div class="post-header">
+        <div class="post-author">
+          <div class="post-avatar">${post.author_name?.[0] || '?'}</div>
+          <div class="post-author-info">
+            <div class="post-author-name">
+              ${post.author_name || '匿名用户'}
+              ${post.author_tag ? `<span class="post-author-tag">${post.author_tag}</span>` : ''}
+            </div>
+            <div class="post-time">${formatTime(post.created_at)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="post-content">${post.content || ''}</div>
+      ${post.images && post.images.length > 0 ? `
+        <div class="post-images">
+          ${post.images.map(img => `<div class="post-image" style="background: linear-gradient(135deg, #FFB6C1, #FFC0CB);"></div>`).join('')}
+        </div>
+      ` : ''}
+      <div class="post-actions">
+        <div class="post-action ${post.is_liked ? 'active' : ''}" onclick="event.stopPropagation(); togglePostLike(${post.id})">
+          <span class="action-icon">${post.is_liked ? '❤️' : '🤍'}</span>
+          <span class="action-count">${post.likes || 0}</span>
+        </div>
+        <div class="post-action" onclick="event.stopPropagation(); openPostDetail(${post.id})">
+          <span class="action-icon">💬</span>
+          <span class="action-count">${post.comments || 0}</span>
+        </div>
+        <div class="post-action ${post.is_saved ? 'active' : ''}" onclick="event.stopPropagation(); togglePostSave(${post.id})">
+          <span class="action-icon">${post.is_saved ? '⭐' : '☆'}</span>
+          <span class="action-count">${post.saves || 0}</span>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// 点赞帖子
+async function togglePostLike(postId) {
+  const post = ForumState.posts.find(p => p.id === postId);
+  if (!post) return;
+  
+  // 乐观更新
+  post.is_liked = !post.is_liked;
+  post.likes = Math.max(0, post.likes + (post.is_liked ? 1 : -1));
+  renderForumPosts();
+  
+  try {
+    await API.post(`/api/forum/posts/${postId}/like`);
+  } catch (err) {
+    // 失败回滚
+    post.is_liked = !post.is_liked;
+    post.likes = Math.max(0, post.likes + (post.is_liked ? 1 : -1));
+    renderForumPosts();
+    showToast('操作失败');
+  }
+}
+
+// 收藏帖子
+async function togglePostSave(postId) {
+  const post = ForumState.posts.find(p => p.id === postId);
+  if (!post) return;
+  
+  // 乐观更新
+  post.is_saved = !post.is_saved;
+  post.saves = Math.max(0, post.saves + (post.is_saved ? 1 : -1));
+  renderForumPosts();
+  
+  try {
+    await API.post(`/api/forum/posts/${postId}/save`);
+  } catch (err) {
+    // 失败回滚
+    post.is_saved = !post.is_saved;
+    post.saves = Math.max(0, post.saves + (post.is_saved ? 1 : -1));
+    renderForumPosts();
+    showToast('操作失败');
+  }
+}
+
+// 打开帖子详情
+async function openPostDetail(postId) {
+  ForumState.currentPostId = postId;
+  showPage('forum-detail');
+  
+  // 加载帖子详情
+  try {
+    const res = await API.get(`/api/forum/posts/${postId}`);
+    if (res.success && res.data) {
+      renderPostDetail(res.data);
+    }
+  } catch (err) {
+    // 使用本地数据
+    const post = ForumState.posts.find(p => p.id === postId);
+    if (post) {
+      renderPostDetail(post);
+    }
+  }
+  
+  // 加载评论
+  loadPostComments(postId);
+}
+
+// 返回帖子列表
+function goBackFromForumDetail() {
+  showPage('forum');
+}
+
+// 渲染帖子详情
+function renderPostDetail(post) {
+  const container = document.getElementById('forumDetailContent');
+  
+  container.innerHTML = `
+    <div class="forum-detail-post">
+      <div class="post-header">
+        <div class="post-author">
+          <div class="post-avatar">${post.author_name?.[0] || '?'}</div>
+          <div class="post-author-info">
+            <div class="post-author-name">
+              ${post.author_name || '匿名用户'}
+              ${post.author_tag ? `<span class="post-author-tag">${post.author_tag}</span>` : ''}
+            </div>
+            <div class="post-time">${formatTime(post.created_at)}</div>
+          </div>
+        </div>
+      </div>
+      <div class="post-content">${post.content || ''}</div>
+      ${post.images && post.images.length > 0 ? `
+        <div class="post-images">
+          ${post.images.map(img => `<div class="post-image" style="background: linear-gradient(135deg, #FFB6C1, #FFC0CB);"></div>`).join('')}
+        </div>
+      ` : ''}
+      <div class="post-actions">
+        <div class="post-action ${post.is_liked ? 'active' : ''}" onclick="togglePostLike(${post.id})">
+          <span class="action-icon">${post.is_liked ? '❤️' : '🤍'}</span>
+          <span class="action-count">${post.likes || 0}</span>
+        </div>
+        <div class="post-action">
+          <span class="action-icon">💬</span>
+          <span class="action-count">${post.comments || 0}</span>
+        </div>
+        <div class="post-action ${post.is_saved ? 'active' : ''}" onclick="togglePostSave(${post.id})">
+          <span class="action-icon">${post.is_saved ? '⭐' : '☆'}</span>
+          <span class="action-count">${post.saves || 0}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// 加载评论
+async function loadPostComments(postId) {
+  try {
+    const res = await API.get(`/api/forum/posts/${postId}/comments`);
+    if (res.success && res.data) {
+      renderPostComments(res.data.list || []);
+    }
+  } catch (err) {
+    // 生成示例评论
+    const sampleComments = [
+      { id: 1, author_name: '云朵邮局', content: '说得太对了！', created_at: Date.now() - 1800000 },
+      { id: 2, author_name: '人间清醒', content: '哇这个好有意思', created_at: Date.now() - 3600000 },
+      { id: 3, author_name: '气泡水加冰', content: '同感同感！', created_at: Date.now() - 5400000 }
+    ];
+    renderPostComments(sampleComments);
+  }
+}
+
+// 渲染评论
+function renderPostComments(comments) {
+  const container = document.getElementById('forumDetailComments');
+  
+  if (comments.length === 0) {
+    container.innerHTML = `<div class="comments-empty">暂无评论，快来抢沙发～</div>`;
+    return;
+  }
+  
+  container.innerHTML = `
+    <div class="comments-title">全部评论 (${comments.length})</div>
+    ${comments.map(comment => `
+      <div class="comment-item">
+        <div class="comment-avatar">${comment.author_name?.[0] || '?'}</div>
+        <div class="comment-content">
+          <div class="comment-author">${comment.author_name || '匿名用户'}</div>
+          <div class="comment-text">${comment.content || ''}</div>
+          <div class="comment-time">${formatTime(comment.created_at)}</div>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// 提交评论
+async function submitForumComment() {
+  const input = document.getElementById('forumCommentInput');
+  const content = input.value.trim();
+  
+  if (!content) {
+    showToast('请输入评论内容');
+    return;
+  }
+  
+  if (!ForumState.currentPostId) return;
+  
+  try {
+    await API.post(`/api/forum/posts/${ForumState.currentPostId}/comments`, { content });
+    input.value = '';
+    showToast('评论成功');
+    loadPostComments(ForumState.currentPostId);
+  } catch (err) {
+    showToast('评论失败');
+  }
+}
+
+// 打开论坛搜索
+function openForumSearch() {
+  showToast('搜索功能开发中');
+}
+
+// 格式化时间
+function formatTime(timestamp) {
+  if (!timestamp) return '';
+  
+  const now = Date.now();
+  const diff = now - timestamp;
+  
+  if (diff < 60000) {
+    return '刚刚';
+  } else if (diff < 3600000) {
+    return Math.floor(diff / 60000) + '分钟前';
+  } else if (diff < 86400000) {
+    return Math.floor(diff / 3600000) + '小时前';
+  } else {
+    return Math.floor(diff / 86400000) + '天前';
+  }
+}
+
+// ==================== 同人文系统 ====================
+const FanficState = {
+  currentCategory: 'all',
+  works: [],
+  page: 1,
+  loading: false,
+  hasMore: true,
+  currentWorkId: null,
+  previousPage: 'profile',
+  selectedCharacters: [],
+  selectedCategory: 'danmei',
+  selectedTrope: 'pojing'
+};
+
+// 打开同人文
+function openFanfic() {
+  FanficState.previousPage = AppState.currentPage;
+  showPage('fanfic');
+  FanficState.currentCategory = 'all';
+  FanficState.works = [];
+  FanficState.page = 1;
+  FanficState.hasMore = true;
+  
+  initFanficCategories();
+  loadFanficWorks();
+}
+
+// 返回上一页
+function goBackFromFanfic() {
+  showPage(FanficState.previousPage);
+}
+
+// 初始化分类标签
+function initFanficCategories() {
+  const categories = [
+    { id: 'all', name: '全部', icon: '📚' },
+    { id: 'danmei', name: '耽美', icon: '💕' },
+    { id: 'yanqing', name: '言情', icon: '💖' },
+    { id: 'xuanhuan', name: '玄幻', icon: '⚔️' },
+    { id: 'xiaoyuan', name: '校园', icon: '🎓' },
+    { id: 'dushi', name: '都市', icon: '🏙️' },
+    { id: 'gufeng', name: '古风', icon: '🏮' },
+    { id: 'kehuan', name: '科幻', icon: '🚀' }
+  ];
+  
+  const container = document.getElementById('fanficCategories');
+  container.innerHTML = categories.map(cat => `
+    <div class="fanfic-category ${cat.id === FanficState.currentCategory ? 'active' : ''}" 
+         onclick="switchFanficCategory('${cat.id}')">
+      <span class="category-icon">${cat.icon}</span>
+      <span class="category-name">${cat.name}</span>
+    </div>
+  `).join('');
+}
+
+// 切换分类
+function switchFanficCategory(categoryId) {
+  FanficState.currentCategory = categoryId;
+  FanficState.works = [];
+  FanficState.page = 1;
+  FanficState.hasMore = true;
+  
+  // 更新样式
+  document.querySelectorAll('.fanfic-category').forEach(cat => {
+    cat.classList.toggle('active', cat.querySelector('.category-name')?.textContent === 
+      ['全部','耽美','言情','玄幻','校园','都市','古风','科幻'][
+        ['all','danmei','yanqing','xuanhuan','xiaoyuan','dushi','gufeng','kehuan'].indexOf(categoryId)
+      ]
+    );
+  });
+  
+  loadFanficWorks();
+}
+
+// 加载作品列表
+async function loadFanficWorks(refresh = false) {
+  if (FanficState.loading) return;
+  if (!FanficState.hasMore && !refresh) return;
+  
+  FanficState.loading = true;
+  document.getElementById('fanficLoading').style.display = 'flex';
+  
+  if (refresh) {
+    FanficState.works = [];
+    FanficState.page = 1;
+    FanficState.hasMore = true;
+  }
+  
+  try {
+    const res = await API.get('/api/fanfic/works', {
+      category: FanficState.currentCategory,
+      page: FanficState.page,
+      pageSize: 12
+    });
+    
+    if (res.success && res.data) {
+      const newWorks = res.data.list || [];
+      
+      if (newWorks.length === 0) {
+        FanficState.hasMore = false;
+      } else {
+        FanficState.works = [...FanficState.works, ...newWorks];
+        FanficState.page++;
+      }
+      
+      renderFanficWorks();
+    }
+  } catch (err) {
+    console.error('加载作品失败:', err);
+    // 生成示例作品
+    if (FanficState.page === 1) {
+      generateSampleFanficWorks();
+    }
+  } finally {
+    FanficState.loading = false;
+    document.getElementById('fanficLoading').style.display = 'none';
+  }
+}
+
+// 生成示例作品
+function generateSampleFanficWorks() {
+  const sampleWorks = [
+    {
+      id: 1,
+      title: '温柔学姐的秘密',
+      cover: '',
+      category: 'danmei',
+      word_count: 15680,
+      character1_name: '温柔学姐',
+      character2_name: '你',
+      excerpt: '她总是那么温柔，直到那天我发现了她的秘密...',
+      in_shelf: false
+    },
+    {
+      id: 2,
+      title: '傲娇大小姐追妻记',
+      cover: '',
+      category: 'yanqing',
+      word_count: 23450,
+      character1_name: '傲娇大小姐',
+      character2_name: '你',
+      excerpt: '"哼，我才不是喜欢你呢！" 她红着脸说。',
+      in_shelf: false
+    },
+    {
+      id: 3,
+      title: '邻家妹妹的夏天',
+      cover: '',
+      category: 'xiaoyuan',
+      word_count: 12340,
+      character1_name: '邻家妹妹',
+      character2_name: '你',
+      excerpt: '那个夏天，蝉鸣不止，心动也不止...',
+      in_shelf: false
+    },
+    {
+      id: 4,
+      title: '总裁的替身情人',
+      cover: '',
+      category: 'dushi',
+      word_count: 34560,
+      character1_name: '冷酷总裁',
+      character2_name: '你',
+      excerpt: '"你只是她的替身，别妄想其他。"',
+      in_shelf: false
+    }
+  ];
+  
+  FanficState.works = sampleWorks;
+  renderFanficWorks();
+}
+
+// 渲染作品列表
+function renderFanficWorks() {
+  const container = document.getElementById('fanficGrid');
+  
+  if (FanficState.works.length === 0) {
+    container.innerHTML = `
+      <div class="fanfic-empty">
+        <div class="empty-icon">📖</div>
+        <div class="empty-text">还没有作品</div>
+        <div class="empty-tip">点击右下角生成你的第一篇</div>
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = FanficState.works.map(work => `
+    <div class="fanfic-card" onclick="openFanficDetail(${work.id})">
+      <div class="fanfic-cover" style="background: linear-gradient(135deg, #FFB6C1, #FF69B4);">
+        <div class="fanfic-cover-title">${work.title?.slice(0, 4) || ''}</div>
+      </div>
+      <div class="fanfic-info">
+        <div class="fanfic-title">${work.title || '无题'}</div>
+        <div class="fanfic-meta">
+          <span class="fanfic-words">${Math.floor((work.word_count || 0) / 1000)}k字</span>
+          <span class="fanfic-chars">${work.character1_name || ''}×${work.character2_name || ''}</span>
+        </div>
+        ${work.in_shelf ? '<div class="fanfic-shelf-badge">已收藏</div>' : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// 打开发布页面
+function openFanficGenerate() {
+  showPage('fanfic-generate');
+  FanficState.selectedCharacters = [];
+  FanficState.selectedCategory = 'danmei';
+  FanficState.selectedTrope = 'pojing';
+  
+  initFanficGeneratePage();
+}
+
+// 返回同人文首页
+function goBackFromFanficGenerate() {
+  showPage('fanfic');
+}
+
+// 初始化生成页面
+async function initFanficGeneratePage() {
+  // 加载角色列表
+  try {
+    const res = await API.get('/api/characters');
+    if (res.success && res.data) {
+      renderFanficCharacters(res.data || []);
+    }
+  } catch (err) {
+    // 使用示例角色
+    const sampleChars = [
+      { id: 1, name: '温柔学姐', avatar: '' },
+      { id: 2, name: '傲娇大小姐', avatar: '' },
+      { id: 3, name: '邻家妹妹', avatar: '' },
+      { id: 4, name: '冷酷总裁', avatar: '' }
+    ];
+    renderFanficCharacters(sampleChars);
+  }
+  
+  // 渲染分类
+  const categories = [
+    { id: 'danmei', name: '耽美' },
+    { id: 'yanqing', name: '言情' },
+    { id: 'xuanhuan', name: '玄幻' },
+    { id: 'xiaoyuan', name: '校园' },
+    { id: 'dushi', name: '都市' },
+    { id: 'gufeng', name: '古风' }
+  ];
+  
+  document.getElementById('fanficGenCategories').innerHTML = categories.map(cat => `
+    <div class="gen-category ${cat.id === FanficState.selectedCategory ? 'active' : ''}" 
+         onclick="selectFanficCategory('${cat.id}')">
+      ${cat.name}
+    </div>
+  `).join('');
+  
+  // 渲染梗
+  const tropes = [
+    { id: 'nianxia', name: '年下' },
+    { id: 'zhuiqi', name: '追妻火葬场' },
+    { id: 'pojing', name: '破镜重圆' },
+    { id: 'shuangxiang', name: '双向暗恋' },
+    { id: 'xianhun', name: '先婚后爱' },
+    { id: 'tishen', name: '替身' },
+    { id: 'chongsheng', name: '重生' },
+    { id: 'chuanyue', name: '穿越' }
+  ];
+  
+  document.getElementById('fanficGenTropes').innerHTML = tropes.map(trope => `
+    <div class="gen-trope ${trope.id === FanficState.selectedTrope ? 'active' : ''}" 
+         onclick="selectFanficTrope('${trope.id}')">
+      ${trope.name}
+    </div>
+  `).join('');
+}
+
+// 渲染角色选择
+function renderFanficCharacters(characters) {
+  const container = document.getElementById('fanficGenCharacters');
+  
+  if (characters.length === 0) {
+    container.innerHTML = '<div class="gen-empty">还没有角色，先去创建角色吧</div>';
+    return;
+  }
+  
+  container.innerHTML = characters.map(char => `
+    <div class="gen-character ${FanficState.selectedCharacters.includes(char.id) ? 'selected' : ''}" 
+         onclick="toggleFanficCharacter(${char.id})">
+      <div class="gen-char-avatar">${char.name?.[0] || '?'}</div>
+      <div class="gen-char-name">${char.name || ''}</div>
+    </div>
+  `).join('');
+}
+
+// 切换角色选择
+function toggleFanficCharacter(charId) {
+  const index = FanficState.selectedCharacters.indexOf(charId);
+  
+  if (index > -1) {
+    FanficState.selectedCharacters.splice(index, 1);
+  } else {
+    if (FanficState.selectedCharacters.length >= 2) {
+      showToast('最多选择2个角色');
+      return;
+    }
+    FanficState.selectedCharacters.push(charId);
+  }
+  
+  // 重新渲染
+  initFanficGeneratePage();
+}
+
+// 选择分类
+function selectFanficCategory(categoryId) {
+  FanficState.selectedCategory = categoryId;
+  document.querySelectorAll('.gen-category').forEach(cat => {
+    cat.classList.toggle('active', cat.textContent === 
+      ['耽美','言情','玄幻','校园','都市','古风'][
+        ['danmei','yanqing','xuanhuan','xiaoyuan','dushi','gufeng'].indexOf(categoryId)
+      ]
+    );
+  });
+}
+
+// 选择梗
+function selectFanficTrope(tropeId) {
+  FanficState.selectedTrope = tropeId;
+  document.querySelectorAll('.gen-trope').forEach(trope => {
+    trope.classList.toggle('active', trope.textContent === 
+      ['年下','追妻火葬场','破镜重圆','双向暗恋','先婚后爱','替身','重生','穿越'][
+        ['nianxia','zhuiqi','pojing','shuangxiang','xianhun','tishen','chongsheng','chuanyue'].indexOf(tropeId)
+      ]
+    );
+  });
+}
+
+// 生成同人文
+async function generateFanfic() {
+  if (FanficState.selectedCharacters.length === 0) {
+    showToast('请至少选择一个角色');
+    return;
+  }
+  
+  const btn = document.getElementById('fanficGenBtn');
+  btn.disabled = true;
+  btn.textContent = '生成中...';
+  
+  try {
+    const customTags = document.getElementById('fanficCustomTags').value.trim();
+    const tags = customTags ? customTags.split(',').map(t => t.trim()).filter(t => t) : [];
+    
+    const res = await API.post('/api/fanfic/generate', {
+      character1Id: FanficState.selectedCharacters[0],
+      character2Id: FanficState.selectedCharacters[1],
+      category: FanficState.selectedCategory,
+      trope: FanficState.selectedTrope,
+      customTags: tags
+    });
+    
+    if (res.success && res.data) {
+      showToast('生成成功！');
+      // 打开详情页
+      openFanficDetail(res.data.work_id);
+    }
+  } catch (err) {
+    showToast(err.message || '生成失败');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ 开始生成';
+  }
+}
+
+// 打开作品详情
+async function openFanficDetail(workId) {
+  FanficState.currentWorkId = workId;
+  showPage('fanfic-detail');
+  
+  try {
+    const res = await API.get(`/api/fanfic/works/${workId}`);
+    if (res.success && res.data) {
+      renderFanficDetail(res.data);
+    }
+  } catch (err) {
+    // 生成示例内容
+    renderSampleFanficDetail(workId);
+  }
+}
+
+// 渲染示例作品详情
+function renderSampleFanficDetail(workId) {
+  const work = FanficState.works.find(w => w.id === workId) || { title: '示例作品' };
+  
+  document.getElementById('fanficDetailTitle').textContent = work.title || '无题';
+  
+  document.getElementById('fanficDetailContent').innerHTML = `
+    <div class="fanfic-detail-header">
+      <div class="fanfic-detail-cover" style="background: linear-gradient(135deg, #FFB6C1, #FF69B4);">
+        <div class="fanfic-cover-title">${work.title?.slice(0, 4) || ''}</div>
+      </div>
+      <div class="fanfic-detail-info">
+        <h1 class="fanfic-detail-title">${work.title || '无题'}</h1>
+        <div class="fanfic-detail-meta">
+          <span>${Math.floor((work.word_count || 15000) / 1000)}k字</span>
+          <span>·</span>
+          <span>${work.character1_name || ''}×${work.character2_name || ''}</span>
+        </div>
+        <div class="fanfic-detail-tags">
+          <span class="fanfic-tag">${work.category || '综合'}</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="fanfic-detail-chars">
+      <div class="detail-char-card">
+        <div class="detail-char-avatar">${work.character1_name?.[0] || '?'}</div>
+        <div class="detail-char-name">${work.character1_name || '主角'}</div>
+        <div class="detail-char-desc">主角</div>
+      </div>
+      <div class="detail-char-vs">×</div>
+      <div class="detail-char-card">
+        <div class="detail-char-avatar">${work.character2_name?.[0] || '你'}</div>
+        <div class="detail-char-name">${work.character2_name || '你'}</div>
+        <div class="detail-char-desc">你</div>
+      </div>
+    </div>
+    
+    <div class="fanfic-detail-content-text">
+      <p>这是一个关于${work.character1_name || '主角'}和${work.character2_name || '你'}的故事。</p>
+      <p>他们相遇在一个普通的下午，阳光透过树叶洒在地上，形成斑驳的光影。</p>
+      <p>"你好。"${work.character1_name || '他'}说。</p>
+      <p>"你好。"另一个人回答。</p>
+      <p>故事就这样开始了...</p>
+      <p style="text-align: center; color: #999; margin-top: 40px;">（点击生成按钮获取完整内容）</p>
+    </div>
+  `;
+}
+
+// 渲染作品详情
+function renderFanficDetail(work) {
+  document.getElementById('fanficDetailTitle').textContent = work.title || '无题';
+  
+  // 更新收藏按钮
+  const saveBtn = document.getElementById('fanficSaveBtn');
+  saveBtn.textContent = work.in_shelf ? '⭐' : '☆';
+  
+  document.getElementById('fanficDetailContent').innerHTML = `
+    <div class="fanfic-detail-header">
+      <div class="fanfic-detail-cover" style="background: linear-gradient(135deg, #FFB6C1, #FF69B4);">
+        <div class="fanfic-cover-title">${work.title?.slice(0, 4) || ''}</div>
+      </div>
+      <div class="fanfic-detail-info">
+        <h1 class="fanfic-detail-title">${work.title || '无题'}</h1>
+        <div class="fanfic-detail-meta">
+          <span>${Math.floor((work.word_count || 0) / 1000)}k字</span>
+          <span>·</span>
+          <span>${work.character1?.name || ''}×${work.character2?.name || ''}</span>
+        </div>
+        <div class="fanfic-detail-tags">
+          ${(work.tags || []).map(tag => `<span class="fanfic-tag">${tag}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+    
+    ${work.character1 || work.character2 ? `
+    <div class="fanfic-detail-chars">
+      ${work.character1 ? `
+      <div class="detail-char-card">
+        <div class="detail-char-avatar">${work.character1.name?.[0] || '?'}</div>
+        <div class="detail-char-name">${work.character1.name || ''}</div>
+        <div class="detail-char-desc">${work.character1.description || '主角'}</div>
+      </div>
+      ` : ''}
+      ${work.character1 && work.character2 ? '<div class="detail-char-vs">×</div>' : ''}
+      ${work.character2 ? `
+      <div class="detail-char-card">
+        <div class="detail-char-avatar">${work.character2.name?.[0] || '?'}</div>
+        <div class="detail-char-name">${work.character2.name || ''}</div>
+        <div class="detail-char-desc">${work.character2.description || '你'}</div>
+      </div>
+      ` : ''}
+    </div>
+    ` : ''}
+    
+    <div class="fanfic-detail-content-text">
+      ${(work.content || '').split('\n').filter(p => p.trim()).map(p => `<p>${p}</p>`).join('')}
+    </div>
+  `;
+}
+
+// 返回作品列表
+function goBackFromFanficDetail() {
+  showPage('fanfic');
+}
+
+// 收藏/取消收藏
+async function toggleFanficSave() {
+  if (!FanficState.currentWorkId) return;
+  
+  try {
+    const res = await API.post(`/api/fanfic/works/${FanficState.currentWorkId}/save`);
+    if (res.success && res.data) {
+      const saveBtn = document.getElementById('fanficSaveBtn');
+      saveBtn.textContent = res.data.in_shelf ? '⭐' : '☆';
+      showToast(res.data.in_shelf ? '已加入书架' : '已移出书架');
+    }
+  } catch (err) {
+    showToast('操作失败');
+  }
+}
+
+// 打开书架
+function openFanficShelf() {
+  showToast('书架功能开发中');
 }
