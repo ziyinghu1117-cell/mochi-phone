@@ -1,23 +1,12 @@
 {
-  "name": "ai-phone-simulator",
+  "name": "mochi-ai-chat",
   "version": "1.0.0",
-  "description": "AI驱动的手机模拟器 - 集成AI聊天、文游、世界书、剧本编辑器的沉浸式互动平台",
+  "description": "商用AI角色聊天平台 - Mochi AI Chat",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "keywords": [
-    "ai",
-    "chat",
-    "text-game",
-    "worldbook",
-    "phone-simulator",
-    "express",
-    "sse"
-  ],
-  "author": "AI Phone Simulator Team",
-  "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",

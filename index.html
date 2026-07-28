@@ -1,360 +1,484 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>AI Phone Simulator</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#FFE4EC">
+  <title>Mochi AI Chat - 你的AI角色聊天伙伴</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- 手机模拟器容器 -->
-    <div id="phone-container" class="phone-container">
-        <div class="phone-frame">
-            <!-- 状态栏 -->
-            <div id="status-bar" class="status-bar">
-                <div class="status-left">
-                    <span id="status-time">12:00</span>
-                </div>
-                <div class="status-center">
-                    <div class="notch"></div>
-                </div>
-                <div class="status-right">
-                    <span class="status-icon">📶</span>
-                    <span class="status-icon">🔋</span>
-                    <span id="status-battery">100%</span>
-                </div>
-            </div>
-            <!-- 主屏幕区域 -->
-            <div id="screen" class="screen">
-                <!-- 桌面 -->
-                <div id="home-screen" class="home-screen active">
-                    <div class="wallpaper"></div>
-                    <div class="app-grid">
-                        <!-- 第一行 -->
-                        <div class="app-icon" data-app="chat">
-                            <div class="icon-wrapper chat-icon">💬</div>
-                            <span class="app-name">AI聊天</span>
-                        </div>
-                        <div class="app-icon" data-app="game">
-                            <div class="icon-wrapper game-icon">🎮</div>
-                            <span class="app-name">AI文游</span>
-                        </div>
-                        <div class="app-icon" data-app="worldbook">
-                            <div class="icon-wrapper worldbook-icon">📚</div>
-                            <span class="app-name">世界书</span>
-                        </div>
-                        <div class="app-icon" data-app="editor">
-                            <div class="icon-wrapper editor-icon">✏️</div>
-                            <span class="app-name">剧本编辑</span>
-                        </div>
-                        <!-- 第二行 -->
-                        <div class="app-icon" data-app="settings">
-                            <div class="icon-wrapper settings-icon">⚙️</div>
-                            <span class="app-name">设置</span>
-                        </div>
-                        <div class="app-icon" data-app="gallery">
-                            <div class="icon-wrapper gallery-icon">🖼️</div>
-                            <span class="app-name">相册</span>
-                        </div>
-                        <div class="app-icon" data-app="music">
-                            <div class="icon-wrapper music-icon">🎵</div>
-                            <span class="app-name">音乐</span>
-                        </div>
-                        <div class="app-icon" data-app="weather">
-                            <div class="icon-wrapper weather-icon">☀️</div>
-                            <span class="app-name">天气</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Dock栏 -->
-                    <div class="dock">
-                        <div class="dock-icon" data-app="chat">
-                            <div class="icon-wrapper chat-icon">💬</div>
-                        </div>
-                        <div class="dock-icon" data-app="game">
-                            <div class="icon-wrapper game-icon">🎮</div>
-                        </div>
-                        <div class="dock-icon" data-app="worldbook">
-                            <div class="icon-wrapper worldbook-icon">📚</div>
-                        </div>
-                        <div class="dock-icon" data-app="settings">
-                            <div class="icon-wrapper settings-icon">⚙️</div>
-                        </div>
-                    </div>
-                    
-                    <!-- 底部指示条 -->
-                    <div class="home-indicator"></div>
-                </div>
-                <!-- AI聊天应用 -->
-                <div id="chat-app" class="app-screen">
-                    <div class="app-header">
-                        <button class="back-btn" data-action="back">←</button>
-                        <h2 class="app-title">AI聊天</h2>
-                        <button class="header-btn" data-action="new-chat">+</button>
-                    </div>
-                    <div class="chat-sidebar">
-                        <div class="chat-list" id="chat-list">
-                            <!-- 聊天列表动态生成 -->
-                        </div>
-                    </div>
-                    <div class="chat-main">
-                        <div class="chat-messages" id="chat-messages">
-                            <!-- 消息动态生成 -->
-                        </div>
-                        <div class="chat-input-area">
-                            <div class="chat-input-wrapper">
-                                <textarea id="chat-input" placeholder="输入消息..." rows="1"></textarea>
-                                <button id="chat-send" class="send-btn">发送</button>
-                            </div>
-                            <div class="chat-tools">
-                                <button class="tool-btn" data-tool="emoji">😊</button>
-                                <button class="tool-btn" data-tool="character">👤</button>
-                                <button class="tool-btn" data-tool="worldbook">🌍</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- AI文游应用 -->
-                <div id="game-app" class="app-screen">
-                    <div class="app-header">
-                        <button class="back-btn" data-action="back">←</button>
-                        <h2 class="app-title">AI文游</h2>
-                        <button class="header-btn" data-action="game-menu">⋮</button>
-                    </div>
-                    <div class="game-sidebar">
-                        <div class="game-stats">
-                            <div class="stat-item">
-                                <span class="stat-label">角色</span>
-                                <span class="stat-value" id="game-character">未选择</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">世界</span>
-                                <span class="stat-value" id="game-world">默认</span>
-                            </div>
-                        </div>
-                        <div class="game-attributes" id="game-attributes">
-                            <!-- 属性状态栏动态生成 -->
-                        </div>
-                        <div class="game-saves">
-                            <h3>存档</h3>
-                            <div class="save-list" id="save-list">
-                                <!-- 存档列表动态生成 -->
-                            </div>
-                            <button class="btn-primary" id="btn-save">保存进度</button>
-                            <button class="btn-secondary" id="btn-load">读取存档</button>
-                        </div>
-                    </div>
-                    <div class="game-main">
-                        <div class="game-story" id="game-story">
-                            <!-- 故事内容动态生成 -->
-                        </div>
-                        <div class="game-input-area">
-                            <div class="game-actions" id="game-actions">
-                                <!-- 动作选项动态生成 -->
-                            </div>
-                            <div class="game-input-wrapper">
-                                <input type="text" id="game-input" placeholder="自由输入你的行动...">
-                                <button id="game-submit" class="send-btn">执行</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <!-- 世界书应用 -->
-                <div id="worldbook-app" class="app-screen">
-                    <div class="app-header">
-                        <button class="back-btn" data-action="back">←</button>
-                        <h2 class="app-title">世界书</h2>
-                        <button class="header-btn" data-action="add-world">+</button>
-                    </div>
-                    <div class="worldbook-tabs">
-                        <button class="tab-btn active" data-tab="worlds">世界观</button>
-                        <button class="tab-btn" data-tab="characters">角色卡</button>
-                        <button class="tab-btn" data-tab="locations">地点卡</button>
-                    </div>
-                    <div class="worldbook-content">
-                        <div class="tab-content active" id="tab-worlds">
-                            <div class="world-list" id="world-list">
-                                <!-- 世界观列表动态生成 -->
-                            </div>
-                        </div>
-                        <div class="tab-content" id="tab-characters">
-                            <div class="character-list" id="character-list">
-                                <!-- 角色卡列表动态生成 -->
-                            </div>
-                        </div>
-                        <div class="tab-content" id="tab-locations">
-                            <div class="location-list" id="location-list">
-                                <!-- 地点卡列表动态生成 -->
-                            </div>
-                        </div>
-                    </div>
-                    <div class="worldbook-footer">
-                        <button class="btn-secondary" id="btn-import">导入JSON</button>
-                        <button class="btn-secondary" id="btn-export">导出JSON</button>
-                    </div>
-                </div>
-                <!-- 剧本编辑器应用 -->
-                <div id="editor-app" class="app-screen">
-                    <div class="app-header">
-                        <button class="back-btn" data-action="back">←</button>
-                        <h2 class="app-title">剧本编辑器</h2>
-                        <button class="header-btn" data-action="editor-menu">⋮</button>
-                    </div>
-                    <div class="editor-toolbar">
-                        <button class="tool-btn" data-tool="add-node">+ 节点</button>
-                        <button class="tool-btn" data-tool="add-branch">+ 分支</button>
-                        <button class="tool-btn" data-tool="preview">▶ 预览</button>
-                        <button class="tool-btn" data-tool="save">💾 保存</button>
-                    </div>
-                    <div class="editor-canvas" id="editor-canvas">
-                        <!-- 节点式编辑器动态生成 -->
-                        <svg class="editor-connections" id="editor-connections"></svg>
-                        <div class="editor-nodes" id="editor-nodes">
-                            <!-- 节点动态生成 -->
-                        </div>
-                    </div>
-                    <div class="editor-properties" id="editor-properties">
-                        <h3>节点属性</h3>
-                        <div class="property-panel">
-                            <label>节点标题</label>
-                            <input type="text" id="node-title" placeholder="输入节点标题">
-                            <label>节点内容</label>
-                            <textarea id="node-content" placeholder="输入剧情内容..." rows="4"></textarea>
-                            <label>分支选项</label>
-                            <div id="node-branches" class="branches-list">
-                                <!-- 分支列表动态生成 -->
-                            </div>
-                            <button class="btn-primary" id="btn-add-branch">添加分支</button>
-                        </div>
-                    </div>
-                </div>
-                <!-- 设置应用 -->
-                <div id="settings-app" class="app-screen">
-                    <div class="app-header">
-                        <button class="back-btn" data-action="back">←</button>
-                        <h2 class="app-title">设置</h2>
-                    </div>
-                    <div class="settings-content">
-                        <div class="settings-section">
-                            <h3>API配置</h3>
-                            <div class="setting-item">
-                                <label>API地址</label>
-                                <input type="text" id="setting-api-url" placeholder="https://api.example.com/v1">
-                            </div>
-                            <div class="setting-item">
-                                <label>API密钥</label>
-                                <input type="password" id="setting-api-key" placeholder="sk-...">
-                            </div>
-                            <div class="setting-item">
-                                <label>默认模型</label>
-                                <select id="setting-model">
-                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                                    <option value="gpt-4">GPT-4</option>
-                                    <option value="gpt-4o">GPT-4o</option>
-                                </select>
-                            </div>
-                            <div class="setting-item">
-                                <label>温度 (0-1)</label>
-                                <input type="range" id="setting-temperature" min="0" max="1" step="0.1" value="0.7">
-                                <span id="temp-value">0.7</span>
-                            </div>
-                            <button class="btn-primary" id="btn-test-api">测试连接</button>
-                        </div>
-                        
-                        <div class="settings-section">
-                            <h3>界面设置</h3>
-                            <div class="setting-item">
-                                <label>主题</label>
-                                <select id="setting-theme">
-                                    <option value="light">浅色</option>
-                                    <option value="dark">深色</option>
-                                    <option value="auto">跟随系统</option>
-                                </select>
-                            </div>
-                            <div class="setting-item">
-                                <label>字体大小</label>
-                                <select id="setting-font-size">
-                                    <option value="small">小</option>
-                                    <option value="medium" selected>中</option>
-                                    <option value="large">大</option>
-                                </select>
-                            </div>
-                            <div class="setting-item">
-                                <label>打字机效果</label>
-                                <input type="checkbox" id="setting-typewriter" checked>
-                            </div>
-                        </div>
-                        
-                        <div class="settings-section">
-                            <h3>数据管理</h3>
-                            <button class="btn-secondary" id="btn-export-all">导出全部数据</button>
-                            <button class="btn-secondary" id="btn-import-all">导入数据</button>
-                            <button class="btn-danger" id="btn-clear-data">清除所有数据</button>
-                        </div>
-                        
-                        <div class="settings-section">
-                            <h3>关于</h3>
-                            <p>AI Phone Simulator v1.0.0</p>
-                            <p>一个集成AI聊天、文游、世界书、剧本编辑的沉浸式互动平台</p>
-                        </div>
-                    </div>
-                </div>
-                <!-- 相册应用 (占位) -->
-                <div id="gallery-app" class="app-screen">
-                    <div class="app-header">
-                        <button class="back-btn" data-action="back">←</button>
-                        <h2 class="app-title">相册</h2>
-                    </div>
-                    <div class="placeholder-content">
-                        <div class="placeholder-icon">🖼️</div>
-                        <p>相册功能开发中...</p>
-                    </div>
-                </div>
-                <!-- 音乐应用 (占位) -->
-                <div id="music-app" class="app-screen">
-                    <div class="app-header">
-                        <button class="back-btn" data-action="back">←</button>
-                        <h2 class="app-title">音乐</h2>
-                    </div>
-                    <div class="placeholder-content">
-                        <div class="placeholder-icon">🎵</div>
-                        <p>音乐功能开发中...</p>
-                    </div>
-                </div>
-                <!-- 天气应用 (占位) -->
-                <div id="weather-app" class="app-screen">
-                    <div class="app-header">
-                        <button class="back-btn" data-action="back">←</button>
-                        <h2 class="app-title">天气</h2>
-                    </div>
-                    <div class="placeholder-content">
-                        <div class="placeholder-icon">☀️</div>
-                        <p>天气功能开发中...</p>
-                    </div>
-                </div>
-            </div>
+  <div id="app">
+    <!-- ==================== 聊天页面 ==================== -->
+    <div class="page page-chat active" id="page-chat">
+      <!-- 顶部角色切换栏 -->
+      <div class="chat-header">
+        <div class="character-switcher" id="characterSwitcher">
+          <!-- 角色头像列表由JS动态生成 -->
         </div>
-    </div>
-    <!-- 模态框 -->
-    <div id="modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="modal-title">标题</h3>
-                <button class="modal-close" id="modal-close">×</button>
-            </div>
-            <div class="modal-body" id="modal-body">
-                <!-- 模态框内容 -->
-            </div>
-            <div class="modal-footer" id="modal-footer">
-                <!-- 模态框按钮 -->
-            </div>
+        <div class="chat-header-actions">
+          <button class="icon-btn" id="btnChatMenu" title="菜单">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="1"/>
+              <circle cx="12" cy="5" r="1"/>
+              <circle cx="12" cy="19" r="1"/>
+            </svg>
+          </button>
         </div>
+      </div>
+
+      <!-- 消息列表 -->
+      <div class="chat-messages" id="chatMessages">
+        <!-- 消息由JS动态生成 -->
+      </div>
+
+      <!-- 底部输入框 -->
+      <div class="chat-input-bar">
+        <textarea
+          class="chat-input"
+          id="chatInput"
+          placeholder="说点什么吧..."
+          rows="1"
+        ></textarea>
+        <button class="send-btn" id="btnSend" title="发送">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+      </div>
     </div>
-    <!-- Toast 提示 -->
-    <div id="toast" class="toast"></div>
-    <!-- 脚本 -->
-    <script src="app.js"></script>
+
+    <!-- ==================== 角色页面 ==================== -->
+    <div class="page page-characters" id="page-characters">
+      <div class="page-header">
+        <h1 class="page-title">我的角色</h1>
+        <button class="add-btn" id="btnAddCharacter">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="character-list" id="characterList">
+        <!-- 角色卡片由JS动态生成 -->
+      </div>
+
+      <div class="empty-state" id="characterEmpty" style="display:none;">
+        <div class="empty-icon">🌸</div>
+        <p>还没有角色哦</p>
+        <p class="empty-tip">点击右上角 + 创建你的第一个角色吧</p>
+      </div>
+    </div>
+
+    <!-- ==================== 社区页面 ==================== -->
+    <div class="page page-community" id="page-community">
+      <div class="page-header">
+        <h1 class="page-title">角色社区</h1>
+      </div>
+
+      <!-- 搜索栏 -->
+      <div class="search-bar">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" class="search-input" id="communitySearch" placeholder="搜索角色...">
+      </div>
+
+      <!-- 筛选标签 -->
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-sort="hot">最热</button>
+        <button class="filter-tab" data-sort="new">最新</button>
+      </div>
+
+      <!-- 角色列表 -->
+      <div class="community-list" id="communityList">
+        <!-- 社区角色卡片由JS动态生成 -->
+      </div>
+    </div>
+
+    <!-- ==================== 我的页面 ==================== -->
+    <div class="page page-profile" id="page-profile">
+      <div class="page-header">
+        <h1 class="page-title">我的</h1>
+      </div>
+
+      <!-- 用户信息卡 -->
+      <div class="profile-card">
+        <div class="profile-avatar" id="profileAvatar">
+          <span class="avatar-placeholder">👤</span>
+        </div>
+        <div class="profile-info">
+          <div class="profile-nickname" id="profileNickname">新用户</div>
+          <div class="profile-desc" id="profileDesc">点击编辑个人资料</div>
+        </div>
+        <button class="profile-edit-btn" id="btnEditProfile">编辑</button>
+      </div>
+
+      <!-- 豆子余额卡 -->
+      <div class="beans-card" id="beansCard">
+        <div class="beans-info">
+          <span class="beans-label">我的豆子</span>
+          <span class="beans-amount" id="beansAmount">0</span>
+        </div>
+        <button class="recharge-btn" id="btnRecharge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          充值
+        </button>
+      </div>
+
+      <!-- 功能列表 -->
+      <div class="menu-list">
+        <div class="menu-item" id="menuBeans">
+          <span class="menu-icon">💰</span>
+          <span class="menu-text">豆子明细</span>
+          <svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
+        <div class="menu-item" id="menuTheme">
+          <span class="menu-icon">🎨</span>
+          <span class="menu-text">自定义装扮</span>
+          <svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
+        <div class="menu-item" id="menuAbout">
+          <span class="menu-icon">ℹ️</span>
+          <span class="menu-text">关于我们</span>
+          <svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
+        <div class="menu-item" id="menuClear">
+          <span class="menu-icon">🗑️</span>
+          <span class="menu-text">清空缓存</span>
+          <svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 底部导航栏 ==================== -->
+    <div class="bottom-nav">
+      <div class="nav-item active" data-page="chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>聊天</span>
+      </div>
+      <div class="nav-item" data-page="characters">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span>角色</span>
+      </div>
+      <div class="nav-item" data-page="community">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        <span>社区</span>
+      </div>
+      <div class="nav-item" data-page="profile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <span>我的</span>
+      </div>
+    </div>
+
+    <!-- ==================== 弹窗：角色编辑 ==================== -->
+    <div class="modal" id="modalCharacterEdit">
+      <div class="modal-overlay"></div>
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h3 id="characterEditTitle">创建角色</h3>
+          <button class="modal-close" data-modal="modalCharacterEdit">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>角色头像</label>
+            <div class="avatar-upload">
+              <div class="avatar-preview" id="characterAvatarPreview">
+                <span class="avatar-placeholder">👤</span>
+              </div>
+              <input type="file" id="characterAvatarInput" accept="image/*" style="display:none;">
+              <button class="btn-secondary" id="btnUploadAvatar">上传头像</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>角色名称 *</label>
+            <input type="text" class="form-input" id="characterName" placeholder="给角色起个名字">
+          </div>
+          <div class="form-group">
+            <label>角色简介</label>
+            <input type="text" class="form-input" id="characterDesc" placeholder="一句话介绍这个角色">
+          </div>
+          <div class="form-group">
+            <label>人设 Prompt *</label>
+            <textarea class="form-textarea" id="characterPrompt" placeholder="详细描述角色的性格、背景、说话方式等...&#10;例如：你是一位温柔的学姐，性格温柔体贴..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>标签（用逗号分隔）</label>
+            <input type="text" class="form-input" id="characterTags" placeholder="如：温柔,治愈,学姐">
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="characterPublic">
+              <span>公开到社区（其他用户可见）</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" data-modal="modalCharacterEdit">取消</button>
+          <button class="btn-primary" id="btnSaveCharacter">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 弹窗：角色详情 ==================== -->
+    <div class="modal" id="modalCharacterDetail">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="detailCharName">角色详情</h3>
+          <button class="modal-close" data-modal="modalCharacterDetail">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="detail-avatar" id="detailAvatar">
+            <span class="avatar-placeholder">👤</span>
+          </div>
+          <div class="detail-name" id="detailName"></div>
+          <div class="detail-desc" id="detailDesc"></div>
+          <div class="detail-tags" id="detailTags"></div>
+          <div class="detail-info">
+            <div class="detail-info-item">
+              <span class="detail-info-label">上传者</span>
+              <span class="detail-info-value" id="detailAuthor"></span>
+            </div>
+            <div class="detail-info-item">
+              <span class="detail-info-label">热度</span>
+              <span class="detail-info-value" id="detailLikes"></span>
+            </div>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">角色设定</div>
+            <div class="detail-prompt" id="detailPrompt"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" data-modal="modalCharacterDetail">关闭</button>
+          <button class="btn-primary" id="btnImportCharacter">导入角色</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 弹窗：个人资料编辑 ==================== -->
+    <div class="modal" id="modalProfileEdit">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>编辑个人资料</h3>
+          <button class="modal-close" data-modal="modalProfileEdit">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>头像</label>
+            <div class="avatar-upload">
+              <div class="avatar-preview" id="profileAvatarPreview">
+                <span class="avatar-placeholder">👤</span>
+              </div>
+              <input type="file" id="profileAvatarInput" accept="image/*" style="display:none;">
+              <button class="btn-secondary" id="btnUploadProfileAvatar">上传头像</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>昵称</label>
+            <input type="text" class="form-input" id="profileNicknameInput" placeholder="你的昵称">
+          </div>
+          <div class="form-group">
+            <label>个人简介</label>
+            <textarea class="form-textarea" id="profileDescInput" placeholder="介绍一下你自己..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" data-modal="modalProfileEdit">取消</button>
+          <button class="btn-primary" id="btnSaveProfile">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 弹窗：充值中心 ==================== -->
+    <div class="modal" id="modalRecharge">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>充值中心</h3>
+          <button class="modal-close" data-modal="modalRecharge">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="recharge-balance">
+            <span>当前余额</span>
+            <span class="recharge-amount" id="rechargeBalance">0</span>
+            <span>豆子</span>
+          </div>
+          <div class="recharge-tiers" id="rechargeTiers">
+            <!-- 充值档位由JS动态生成 -->
+          </div>
+          <p class="recharge-tip">💡 测试模式：点击档位即可模拟充值成功</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 弹窗：豆子明细 ==================== -->
+    <div class="modal" id="modalBeansDetail">
+      <div class="modal-overlay"></div>
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h3>豆子明细</h3>
+          <button class="modal-close" data-modal="modalBeansDetail">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="beans-summary">
+            <div class="beans-summary-item">
+              <span class="beans-summary-label">当前余额</span>
+              <span class="beans-summary-value" id="beansSummaryBalance">0</span>
+            </div>
+          </div>
+          <div class="transaction-list" id="transactionList">
+            <!-- 交易记录由JS动态生成 -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 弹窗：自定义装扮 ==================== -->
+    <div class="modal" id="modalTheme">
+      <div class="modal-overlay"></div>
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h3>自定义装扮</h3>
+          <button class="modal-close" data-modal="modalTheme">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="theme-tabs">
+            <button class="theme-tab active" data-theme-tab="ui">页面UI</button>
+            <button class="theme-tab" data-theme-tab="bubble">聊天气泡</button>
+            <button class="theme-tab" data-theme-tab="wallpaper">聊天壁纸</button>
+          </div>
+
+          <!-- 页面UI装扮 -->
+          <div class="theme-panel active" id="themePanelUi">
+            <div class="form-group">
+              <label>自定义CSS（全局样式）</label>
+              <textarea class="form-textarea css-input" id="cssUi" placeholder="/* 在这里输入自定义CSS */&#10;/* 例如：&#10;.page-title { color: #ff6b9d; }&#10;.bottom-nav { background: #fff0f5; }&#10;*/"></textarea>
+            </div>
+            <div class="theme-actions">
+              <button class="btn-secondary" id="btnResetUi">重置默认</button>
+              <button class="btn-primary" id="btnApplyUi">应用样式</button>
+            </div>
+          </div>
+
+          <!-- 聊天气泡装扮 -->
+          <div class="theme-panel" id="themePanelBubble">
+            <div class="form-group">
+              <label>自定义气泡CSS（仅作用于 .chat-bubble）</label>
+              <textarea class="form-textarea css-input" id="cssBubble" placeholder="/* 自定义聊天气泡样式 */&#10;/* 例如：&#10;border-radius: 20px;&#10;background: linear-gradient(135deg, #ff9ec8, #ff6b9d);&#10;color: white;&#10;*/"></textarea>
+            </div>
+            <div class="theme-actions">
+              <button class="btn-secondary" id="btnResetBubble">重置默认</button>
+              <button class="btn-primary" id="btnApplyBubble">应用样式</button>
+            </div>
+          </div>
+
+          <!-- 聊天壁纸装扮 -->
+          <div class="theme-panel" id="themePanelWallpaper">
+            <div class="form-group">
+              <label>聊天壁纸</label>
+              <div class="wallpaper-upload">
+                <input type="file" id="wallpaperInput" accept="image/*" style="display:none;">
+                <button class="btn-secondary" id="btnUploadWallpaper">上传壁纸</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>透明度 <span id="wallpaperOpacityValue">30%</span></label>
+              <input type="range" class="form-range" id="wallpaperOpacity" min="0" max="100" value="30">
+            </div>
+            <div class="form-group">
+              <label>模糊度 <span id="wallpaperBlurValue">0px</span></label>
+              <input type="range" class="form-range" id="wallpaperBlur" min="0" max="20" value="0">
+            </div>
+            <div class="theme-actions">
+              <button class="btn-secondary" id="btnResetWallpaper">重置默认</button>
+              <button class="btn-primary" id="btnApplyWallpaper">应用壁纸</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 弹窗：关于 ==================== -->
+    <div class="modal" id="modalAbout">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>关于 Mochi AI Chat</h3>
+          <button class="modal-close" data-modal="modalAbout">×</button>
+        </div>
+        <div class="modal-body about-content">
+          <div class="about-logo">🌸</div>
+          <h2>Mochi AI Chat</h2>
+          <p class="about-version">版本 1.0.0</p>
+          <p class="about-desc">
+            一款治愈系AI角色聊天平台<br>
+            创造属于你的AI角色伙伴<br>
+            享受温暖有趣的对话体验
+          </p>
+          <div class="about-features">
+            <div class="about-feature">🎭 自定义角色</div>
+            <div class="about-feature">🌐 社区分享</div>
+            <div class="about-feature">🎨 个性装扮</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 弹窗：确认对话框 ==================== -->
+    <div class="modal" id="modalConfirm">
+      <div class="modal-overlay"></div>
+      <div class="modal-content modal-small">
+        <div class="modal-body">
+          <div class="confirm-icon">⚠️</div>
+          <div class="confirm-title" id="confirmTitle">确认操作</div>
+          <div class="confirm-message" id="confirmMessage">确定要执行此操作吗？</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-secondary" id="btnConfirmCancel">取消</button>
+          <button class="btn-danger" id="btnConfirmOk">确定</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== Toast 提示 ==================== -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 自定义样式注入标签 -->
+    <style id="customUiStyle"></style>
+    <style id="customBubbleStyle"></style>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
