@@ -133,11 +133,11 @@ function showLoginPage() {
 
 function showMainApp() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById('page-chat').classList.add('active');
+  document.getElementById('page-home').classList.add('active');
   document.getElementById('bottomNav').style.display = 'flex';
-  AppState.currentPage = 'chat';
+  AppState.currentPage = 'home';
+  initHome();
 }
-
 async function checkAuth() {
   try {
     const res = await API.get('/api/auth/me');
@@ -2214,7 +2214,15 @@ async function initFanficGeneratePage() {
     { id: 'xianhun', name: '先婚后爱' },
     { id: 'tishen', name: '替身' },
     { id: 'chongsheng', name: '重生' },
-    { id: 'chuanyue', name: '穿越' }
+    { id: 'chuanyue', name: '穿越' },
+    { id: 'abo', name: 'ABO' },
+    { id: 'qiangzhi', name: '强制爱' },
+    { id: 'baiyueguang', name: '白月光' },
+    { id: 'zhushazhi', name: '朱砂痣' },
+    { id: 'qingdi', name: '情敌变情人' },
+    { id: 'qingmei', name: '青梅竹马' },
+    { id: 'huanxi', name: '欢喜冤家' },
+    { id: 'baoyang', name: '包养' }
   ];
   
   document.getElementById('fanficGenTropes').innerHTML = tropes.map(trope => `
@@ -2278,8 +2286,8 @@ function selectFanficTrope(tropeId) {
   FanficState.selectedTrope = tropeId;
   document.querySelectorAll('.gen-trope').forEach(trope => {
     trope.classList.toggle('active', trope.textContent === 
-      ['年下','追妻火葬场','破镜重圆','双向暗恋','先婚后爱','替身','重生','穿越'][
-        ['nianxia','zhuiqi','pojing','shuangxiang','xianhun','tishen','chongsheng','chuanyue'].indexOf(tropeId)
+      ['年下','追妻火葬场','破镜重圆','双向暗恋','先婚后爱','替身','重生','穿越','ABO','强制爱','白月光','朱砂痣','情敌变情人','青梅竹马','欢喜冤家','包养'][
+        ['nianxia','zhuiqi','pojing','shuangxiang','xianhun','tishen','chongsheng','chuanyue','abo','qiangzhi','baiyueguang','zhushazhi','qingdi','qingmei','huanxi','baoyang'].indexOf(tropeId)
       ]
     );
   });
@@ -2462,4 +2470,156 @@ async function toggleFanficSave() {
 // 打开书架
 function openFanficShelf() {
   showToast('书架功能开发中');
+}
+
+// ==================== 手机桌面 ====================
+const HomeState = {
+  currentApp: null
+};
+
+// 更新时间
+function updateHomeTime() {
+  const now = new Date();
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  
+  const timeStr = `${hours}:${minutes}`;
+  document.getElementById('statusTime').textContent = timeStr;
+  document.getElementById('homeTime').textContent = timeStr;
+  
+  const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+  const month = now.getMonth() + 1;
+  const date = now.getDate();
+  const day = days[now.getDay()];
+  
+  document.getElementById('homeDate').textContent = `${day} ${month}月${date}日`;
+}
+
+// 打开APP
+function openApp(appName) {
+  HomeState.currentApp = appName;
+  
+  // 播放打开动画
+  const overlay = document.getElementById('appOpenOverlay');
+  const icon = document.getElementById('appOpenIcon');
+  
+  // 设置图标样式
+  const iconClasses = {
+    'chat': 'chat-icon',
+    'characters': 'chars-icon',
+    'community': 'community-icon',
+    'forum': 'forum-icon',
+    'fanfic': 'fanfic-icon',
+    'profile': 'profile-icon'
+  };
+  
+  const iconEmojis = {
+    'chat': '💬',
+    'characters': '🎭',
+    'community': '🌐',
+    'forum': '📝',
+    'fanfic': '📖',
+    'profile': '👤'
+  };
+  
+  icon.className = 'app-open-icon ' + (iconClasses[appName] || '');
+  icon.textContent = iconEmojis[appName] || '📱';
+  
+  // 显示遮罩
+  overlay.classList.add('active');
+  
+  // 动画结束后跳转到对应页面
+  setTimeout(() => {
+    overlay.classList.remove('active');
+    
+    if (appName === 'forum') {
+      openForum();
+    } else if (appName === 'fanfic') {
+      openFanfic();
+    } else {
+      switchPage(appName);
+    }
+  }, 300);
+}
+
+// 返回桌面
+function goHome() {
+  switchPage('home');
+  HomeState.currentApp = null;
+}
+
+// 初始化桌面
+function initHome() {
+  updateHomeTime();
+  setInterval(updateHomeTime, 60000);
+}
+
+// ==================== 论坛侧边栏 ====================
+// 打开侧边栏
+function openForumSidebar() {
+  document.getElementById('forumSidebarOverlay').classList.add('active');
+  document.getElementById('forumSidebar').classList.add('active');
+  
+  // 更新用户信息
+  if (AppState.user) {
+    document.getElementById('sidebarAvatar').textContent = (AppState.user.nickname || AppState.user.username || '?')[0];
+    document.getElementById('sidebarName').textContent = AppState.user.nickname || AppState.user.username || '用户';
+    document.getElementById('sidebarTag').textContent = AppState.user.forum_tag || '萌新';
+  }
+}
+
+// 关闭侧边栏
+function closeForumSidebar() {
+  document.getElementById('forumSidebarOverlay').classList.remove('active');
+  document.getElementById('forumSidebar').classList.remove('active');
+}
+
+// 我的主页
+function goToForumProfile() {
+  closeForumSidebar();
+  showToast('我的主页功能开发中');
+}
+
+// 我的收藏
+function goToForumFavorites() {
+  closeForumSidebar();
+  showToast('我的收藏功能开发中');
+}
+
+// 我的关注
+function goToForumFollows() {
+  closeForumSidebar();
+  showToast('我的关注功能开发中');
+}
+
+// 热搜榜
+function goToHotSearch() {
+  closeForumSidebar();
+  showToast('热搜榜功能开发中');
+}
+
+// 修改身份标签
+function editProfileTag() {
+  closeForumSidebar();
+  showToast('修改身份标签功能开发中');
+}
+
+// 返回论坛（从桌面进入时返回桌面）
+function goBackFromForum() {
+  goHome();
+}
+
+// ==================== 同人文字数选择 ====================
+// 选择字数
+function selectFanficLength(length) {
+  FanficState.selectedLength = length;
+  
+  document.querySelectorAll('.gen-length-option').forEach(opt => {
+    opt.classList.toggle('active', opt.dataset.length === length);
+  });
+  
+  // 更新消耗米粒数
+  const costMap = { short: 10, medium: 25, long: 50 };
+  const cost = costMap[length] || 10;
+  document.querySelector('.cost-rice').textContent = cost;
 }

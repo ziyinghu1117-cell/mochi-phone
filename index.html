@@ -59,6 +59,77 @@
     </div>
 
     <!-- ==================== 聊天页面 ==================== -->
+
+    <!-- ==================== 手机桌面页面 ==================== -->
+    <div class="page page-home" id="page-home">
+      <!-- 状态栏 -->
+      <div class="home-status-bar">
+        <span class="status-time" id="statusTime">9:41</span>
+        <div class="status-icons">
+          <span>📶</span>
+          <span>🔋</span>
+        </div>
+      </div>
+      
+      <!-- 时间日期 -->
+      <div class="home-clock">
+        <div class="home-time" id="homeTime">09:41</div>
+        <div class="home-date" id="homeDate">星期一 7月28日</div>
+      </div>
+      
+      <!-- APP图标网格 -->
+      <div class="home-apps">
+        <div class="home-app-icon" onclick="openApp('chat')">
+          <div class="app-icon-img chat-icon">💬</div>
+          <div class="app-icon-label">聊天</div>
+        </div>
+        <div class="home-app-icon" onclick="openApp('characters')">
+          <div class="app-icon-img chars-icon">🎭</div>
+          <div class="app-icon-label">角色</div>
+        </div>
+        <div class="home-app-icon" onclick="openApp('community')">
+          <div class="app-icon-img community-icon">🌐</div>
+          <div class="app-icon-label">社区</div>
+        </div>
+        <div class="home-app-icon" onclick="openApp('forum')">
+          <div class="app-icon-img forum-icon">📝</div>
+          <div class="app-icon-label">论坛</div>
+        </div>
+        <div class="home-app-icon" onclick="openApp('fanfic')">
+          <div class="app-icon-img fanfic-icon">📖</div>
+          <div class="app-icon-label">同人文</div>
+        </div>
+        <div class="home-app-icon" onclick="openApp('profile')">
+          <div class="app-icon-img profile-icon">👤</div>
+          <div class="app-icon-label">我的</div>
+        </div>
+      </div>
+      
+      <!-- 底部Dock -->
+      <div class="home-dock">
+        <div class="home-app-icon dock-icon" onclick="openApp('chat')">
+          <div class="app-icon-img chat-icon">💬</div>
+        </div>
+        <div class="home-app-icon dock-icon" onclick="openApp('forum')">
+          <div class="app-icon-img forum-icon">📝</div>
+        </div>
+        <div class="home-app-icon dock-icon" onclick="openApp('fanfic')">
+          <div class="app-icon-img fanfic-icon">📖</div>
+        </div>
+        <div class="home-app-icon dock-icon" onclick="openApp('profile')">
+          <div class="app-icon-img profile-icon">👤</div>
+        </div>
+      </div>
+      
+      <!-- 底部指示器 -->
+      <div class="home-indicator"></div>
+    </div>
+    
+    <!-- APP打开动画遮罩 -->
+    <div class="app-open-overlay" id="appOpenOverlay">
+      <div class="app-open-icon" id="appOpenIcon"></div>
+    </div>
+
     <div class="page page-chat" id="page-chat">
       <div class="chat-header">
         <div class="character-switcher" id="characterSwitcher">
@@ -623,7 +694,7 @@
     <div class="page page-forum" id="page-forum">
       <div class="forum-header">
         <div class="forum-nav">
-          <button class="forum-back-btn" onclick="goBackFromForum()">←</button>
+          <button class="forum-menu-btn" onclick="openForumSidebar()">☰</button>
           <div class="forum-title">论坛</div>
           <button class="forum-search-btn" onclick="openForumSearch()">🔍</button>
         </div>
@@ -631,6 +702,38 @@
           <div class="forum-tab active" data-tab="following" onclick="switchForumTab('following')">关注</div>
           <div class="forum-tab" data-tab="recommended" onclick="switchForumTab('recommended')">推荐</div>
           <div class="forum-tab" data-tab="gossip" onclick="switchForumTab('gossip')">八卦</div>
+        </div>
+      </div>
+      <!-- 侧边栏菜单 -->
+      <div class="forum-sidebar-overlay" id="forumSidebarOverlay" onclick="closeForumSidebar()"></div>
+      <div class="forum-sidebar" id="forumSidebar">
+        <div class="sidebar-user">
+          <div class="sidebar-avatar" id="sidebarAvatar">?</div>
+          <div class="sidebar-name" id="sidebarName">用户</div>
+          <div class="sidebar-tag" id="sidebarTag">萌新</div>
+        </div>
+        <div class="sidebar-menu">
+          <div class="sidebar-item" onclick="goToForumProfile()">
+            <span class="sidebar-icon">👤</span>
+            <span class="sidebar-text">我的主页</span>
+          </div>
+          <div class="sidebar-item" onclick="goToForumFavorites()">
+            <span class="sidebar-icon">⭐</span>
+            <span class="sidebar-text">我的收藏</span>
+          </div>
+          <div class="sidebar-item" onclick="goToForumFollows()">
+            <span class="sidebar-icon">❤️</span>
+            <span class="sidebar-text">我的关注</span>
+          </div>
+          <div class="sidebar-item" onclick="goToHotSearch()">
+            <span class="sidebar-icon">🔥</span>
+            <span class="sidebar-text">热搜榜</span>
+          </div>
+          <div class="sidebar-divider"></div>
+          <div class="sidebar-item" onclick="editProfileTag()">
+            <span class="sidebar-icon">✏️</span>
+            <span class="sidebar-text">修改身份标签</span>
+          </div>
         </div>
       </div>
       <div class="forum-content">
@@ -721,6 +824,23 @@
           <input type="text" id="fanficCustomTags" placeholder="用逗号分隔，如：甜宠,HE" class="fanfic-gen-input">
         </div>
         
+        <div class="fanfic-gen-section">
+          <div class="fanfic-gen-label">选择字数</div>
+          <div class="fanfic-gen-length">
+            <div class="gen-length-option active" data-length="short" onclick="selectFanficLength('short')">
+              <div class="length-name">短篇</div>
+              <div class="length-desc">约2000字</div>
+            </div>
+            <div class="gen-length-option" data-length="medium" onclick="selectFanficLength('medium')">
+              <div class="length-name">中篇</div>
+              <div class="length-desc">约5000字</div>
+            </div>
+            <div class="gen-length-option" data-length="long" onclick="selectFanficLength('long')">
+              <div class="length-name">长篇</div>
+              <div class="length-desc">约10000字</div>
+            </div>
+          </div>
+        </div>
         <div class="fanfic-gen-cost">
           生成消耗 <span class="cost-rice">10</span> 米粒
         </div>
