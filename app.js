@@ -110,17 +110,29 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initApp() {
-  loadThemeFromStorage();
-  applyThemeConfig();
-  setupEventListeners();
+  try {
+    loadThemeFromStorage();
+    applyThemeConfig();
+    setupEventListeners();
 
-  // 检查是否已登录
-  const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
-  if (token) {
-    AppState.token = token;
-    checkAuth();
-  } else {
-    showLoginPage();
+    // 检查是否已登录
+    const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+    if (token) {
+      AppState.token = token;
+      checkAuth();
+    } else {
+      showLoginPage();
+    }
+  } catch (err) {
+    console.error('initApp error:', err);
+    // 容错：初始化失败时至少显示登录页面
+    try {
+      showLoginPage();
+    } catch (e) {
+      // 最后的容错：直接显示登录页面
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById('page-login')?.classList.add('active');
+    }
   }
 }
 
@@ -428,6 +440,43 @@ function setupEventListeners() {
 }
 
 // ==================== 页面切换 ====================
+// 页面切换（通用，不更新底部导航）
+function showPage(page) {
+  try {
+    AppState.currentPage = page;
+    
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const targetPage = document.getElementById('page-' + page);
+    if (targetPage) {
+      targetPage.classList.add('active');
+    } else {
+      console.error('Page not found:', page);
+      // 容错：找不到页面时回到首页
+      document.getElementById('page-home')?.classList.add('active');
+      AppState.currentPage = 'home';
+    }
+    
+    // 更新底部导航（仅对底部导航中的页面）
+    const navPages = ['chat', 'characters', 'community', 'profile'];
+    if (navPages.includes(page)) {
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.page === page);
+      });
+    }
+    
+    // 页面特定的初始化
+    if (page === 'characters') {
+      renderCharacters();
+    } else if (page === 'community') {
+      loadCommunityCharacters();
+    } else if (page === 'profile') {
+      renderProfile();
+    }
+  } catch (err) {
+    console.error('showPage error:', err);
+  }
+}
+
 function switchPage(page) {
   AppState.currentPage = page;
   
@@ -2623,3 +2672,21 @@ function selectFanficLength(length) {
   const cost = costMap[length] || 10;
   document.querySelector('.cost-rice').textContent = cost;
 }
+
+// ==================== 全局错误处理 ====================
+window.onerror = function(message, source, lineno, colno, error) {
+  console.error('Global error:', message, 'at', source, lineno, colno, error);
+  // 尝试恢复到登录页面
+  try {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-login')?.classList.add('active');
+    document.getElementById('bottomNav').style.display = 'none';
+  } catch (e) {
+    // 忽略恢复错误
+  }
+  return false;
+};
+
+window.onunhandledrejection = function(event) {
+  console.error('Unhandled promise rejection:', event.reason);
+};
