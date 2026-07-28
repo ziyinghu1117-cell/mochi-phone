@@ -1,6 +1,12 @@
 /**
- * Mochi AI Chat - 前端核心逻辑 v2.0
- * 功能：登录注册、聊天、角色管理、社区、个人中心、自定义装扮、云端同步
+ * Mochi AI Chat - 前端核心逻辑 v2.2
+ * 功能：登录注册、聊天、角色管理、社区、个人中心、自定义装扮、兑换码支付
+ * 
+ * v2.2 更新：
+ * - 修复聊天发送逻辑 bug
+ * - 优化错误提示
+ * - 新增兑换码功能
+ * - 新增收款码展示
  */
 
 // ==================== 全局状态 ====================
@@ -32,7 +38,8 @@ const AppState = {
     wallpaperOpacity: 30,
     wallpaperBlur: 0
   },
-  txFilterType: 'all'
+  txFilterType: 'all',
+  rechargeTiers: []
 };
 
 // ==================== 本地存储键 ====================
@@ -275,7 +282,7 @@ function setupEventListeners() {
   // 登录注册
   document.getElementById('btnLogin').addEventListener('click', handleLogin);
   document.getElementById('btnRegister').addEventListener('click', handleRegister);
-
+  
   document.querySelectorAll('.login-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
@@ -331,6 +338,10 @@ function setupEventListeners() {
   document.getElementById('menuRice').addEventListener('click', openRiceDetail);
   document.getElementById('menuOrders').addEventListener('click', openOrders);
   document.getElementById('menuLogout').addEventListener('click', handleLogout);
+
+  // 兑换码
+  document.getElementById('menuRedeemCode').addEventListener('click', openRedeemCode);
+  document.getElementById('btnRedeemSubmit').addEventListener('click', handleRedeemCode);
 
   // 交易记录筛选
   document.querySelectorAll('[data-tx-type]').forEach(tab => {
@@ -495,7 +506,7 @@ function renderCharacterSwitcher() {
   });
 }
 
-// ==================== 聊天功能 ====================
+// ==================== 聊天功能（已修复） ====================
 function renderMessages() {
   const container = document.getElementById('chatMessages');
   const convId = AppState.currentConversationId;
@@ -552,6 +563,7 @@ async function sendMessage() {
   const text = input.value.trim();
   
   if (!text || AppState.isSending) return;
+
   if (!AppState.currentCharacterId) {
     showToast('请先选择一个角色');
     return;
@@ -585,7 +597,7 @@ async function sendMessage() {
     }
   }
 
-  // 添加用户消息
+  // 添加用户消息到本地
   const userMsg = {
     role: 'user',
     content: text,
@@ -601,11 +613,11 @@ async function sendMessage() {
 
   // 发送AI请求
   AppState.isSending = true;
-  await sendAiRequest(character, convId, AppState.chatHistory[convId]);
+  await sendAiRequest(character, convId);
   AppState.isSending = false;
 }
 
-async function sendAiRequest(character, convId, messages) {
+async function sendAiRequest(character, convId) {
   try {
     // 添加AI消息占位
     const aiMsg = {
@@ -617,6 +629,12 @@ async function sendAiRequest(character, convId, messages) {
     renderMessages();
     scrollToBottom();
 
+    // 构建发送给后端的消息（只发送历史消息，不包含AI占位）
+    const historyMessages = AppState.chatHistory[convId]
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .filter((m, idx, arr) => !(m.role === 'assistant' && idx === arr.length - 1 && m.content === ''))
+      .map(m => ({ role: m.role, content: m.content }));
+
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {
@@ -624,7 +642,7 @@ async function sendAiRequest(character, convId, messages) {
         'Authorization': `Bearer ${AppState.token}`
       },
       body: JSON.stringify({
-        messages: messages.filter(m => m.role !== 'system').map(m => ({ role: m.role, content: m.content })),
+        messages: historyMessages,
         characterId: character.id,
         conversationId: convId,
         stream: true
@@ -632,14 +650,21 @@ async function sendAiRequest(character, convId, messages) {
     });
 
     if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error || '请求失败');
+      let errData = {};
+      try {
+        errData = await response.json();
+      } catch (e) {}
+      
+      // 根据错误码显示友好提示
+      const errorMsg = getFriendlyError(errData.code, errData.error);
+      throw new Error(errorMsg);
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let fullContent = '';
+    let hasError = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -660,7 +685,9 @@ async function sendAiRequest(character, convId, messages) {
           const parsed = JSON.parse(data);
           
           if (parsed.error) {
-            throw new Error(parsed.error);
+            hasError = true;
+            const errorMsg = getFriendlyError(parsed.code, parsed.error);
+            throw new Error(errorMsg);
           }
 
           if (parsed.done) {
@@ -683,10 +710,17 @@ async function sendAiRequest(character, convId, messages) {
             }
           }
         } catch (e) {
+          if (hasError) throw e;
           // 忽略解析错误
         }
       }
     }
+
+    // 如果没有内容，可能是流式失败了
+    if (!fullContent) {
+      throw new Error('未收到回复，请重试');
+    }
+
   } catch (err) {
     console.error('AI请求失败:', err);
     showToast(err.message);
@@ -698,6 +732,26 @@ async function sendAiRequest(character, convId, messages) {
       renderMessages();
     }
   }
+}
+
+/**
+ * 根据错误码返回友好的错误提示
+ */
+function getFriendlyError(code, defaultMsg) {
+  const errorMap = {
+    'API_KEY_ERROR': 'API密钥错误，请检查配置',
+    'API_URL_ERROR': 'API地址无法连接，请检查地址配置',
+    'API_BALANCE_ERROR': 'API余额不足，请联系管理员',
+    'API_MODEL_ERROR': '模型不存在，请检查模型配置',
+    'API_RATE_LIMIT': '请求过于频繁，请稍后再试',
+    'API_SERVER_ERROR': 'API服务暂不可用，请稍后重试',
+    'API_NOT_CONFIGURED': '服务未配置API，请联系管理员',
+    'RICE_NOT_ENOUGH': '米粒不足，请充值',
+    'NOT_LOGGED_IN': '请先登录',
+    'TOKEN_EXPIRED': '登录已过期，请重新登录',
+    'NETWORK_ERROR': '网络异常，请重试'
+  };
+  return errorMap[code] || defaultMsg || '请求失败，请重试';
 }
 
 function updateLastMessage() {
@@ -720,6 +774,33 @@ function updateLastMessage() {
 function scrollToBottom() {
   const container = document.getElementById('chatMessages');
   container.scrollTop = container.scrollHeight;
+}
+
+// ==================== 兑换码功能 ====================
+function openRedeemCode() {
+  document.getElementById('redeemCodeInput').value = '';
+  openModal('modalRedeemCode');
+}
+
+async function handleRedeemCode() {
+  const code = document.getElementById('redeemCodeInput').value.trim();
+  
+  if (!code) {
+    showToast('请输入兑换码');
+    return;
+  }
+
+  try {
+    const res = await API.post('/api/code/redeem', { code });
+    if (res.success) {
+      AppState.user.rice_balance = res.data.rice_balance;
+      updateRiceDisplay();
+      showToast(`兑换成功！获得 ${res.data.rice_amount} 米粒`);
+      closeModal('modalRedeemCode');
+    }
+  } catch (err) {
+    showToast(err.message);
+  }
 }
 
 // ==================== 角色管理 ====================
@@ -890,7 +971,6 @@ function deleteCharacter(id) {
 function handleCharacterAvatar(e) {
   const file = e.target.files[0];
   if (!file) return;
-
   const reader = new FileReader();
   reader.onload = (event) => {
     document.getElementById('characterAvatarPreview').innerHTML = `<img src="${event.target.result}" alt="头像">`;
@@ -1074,7 +1154,6 @@ async function saveProfile() {
 function handleProfileAvatar(e) {
   const file = e.target.files[0];
   if (!file) return;
-
   const reader = new FileReader();
   reader.onload = (event) => {
     document.getElementById('profileAvatarPreview').innerHTML = `<img src="${event.target.result}" alt="头像">`;
@@ -1087,6 +1166,7 @@ async function openRecharge() {
   try {
     const res = await API.get('/api/recharge/tiers');
     if (res.success) {
+      AppState.rechargeTiers = res.data;
       renderRechargeTiers(res.data);
     }
   } catch (err) {
@@ -1110,17 +1190,53 @@ function renderRechargeTiers(tiers) {
   `).join('');
 }
 
-async function handleRecharge(tierIndex) {
+function handleRecharge(tierIndex) {
+  const tier = AppState.rechargeTiers[tierIndex];
+  if (!tier) return;
+  
+  // 显示支付弹窗
+  document.getElementById('paymentAmount').textContent = tier.price;
+  document.getElementById('paymentRice').textContent = tier.rice + tier.bonus;
+  document.getElementById('paymentUserId').textContent = AppState.user.id;
+  
+  // 重置步骤
+  document.getElementById('paymentStep1').style.display = 'block';
+  document.getElementById('paymentStep2').style.display = 'none';
+  
+  closeModal('modalRecharge');
+  openModal('modalPayment');
+}
+
+async function submitRechargeApply() {
+  const btn = document.getElementById('btnSubmitRecharge');
+  btn.disabled = true;
+  btn.textContent = '提交中...';
+  
   try {
-    const res = await API.post('/api/recharge/simulate', { tierIndex });
+    // 找到当前选中的档位（通过金额匹配）
+    const amount = parseFloat(document.getElementById('paymentAmount').textContent);
+    const tier = AppState.rechargeTiers.find(t => t.price === amount);
+    
+    if (!tier) {
+      showToast('充值档位错误');
+      return;
+    }
+    
+    const res = await API.post('/api/recharge/apply', { 
+      tierIndex: AppState.rechargeTiers.indexOf(tier) 
+    });
+    
     if (res.success) {
-      AppState.user.rice_balance = res.data.rice_balance;
-      updateRiceDisplay();
-      document.getElementById('rechargeBalance').textContent = res.data.rice_balance;
-      showToast('充值成功！');
+      // 显示成功步骤
+      document.getElementById('paymentStep1').style.display = 'none';
+      document.getElementById('paymentStep2').style.display = 'block';
+      document.getElementById('paymentOrderNo').textContent = res.data.order_no;
     }
   } catch (err) {
     showToast(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '我已付款，提交申请';
   }
 }
 
@@ -1170,9 +1286,9 @@ function renderTransactions(transactions) {
 
 async function openOrders() {
   try {
-    const res = await API.get('/api/orders');
+    const res = await API.get('/api/recharge/orders');
     if (res.success) {
-      renderOrders(res.data);
+      renderOrders(res.data.list || res.data);
     }
   } catch (err) {
     showToast(err.message);
@@ -1188,21 +1304,30 @@ function renderOrders(orders) {
     return;
   }
 
-  container.innerHTML = orders.map(order => `
+  const statusMap = {
+    pending: { text: '待确认', class: 'pending' },
+    completed: { text: '已完成', class: 'completed' },
+    rejected: { text: '已拒绝', class: 'rejected' }
+  };
+
+  container.innerHTML = orders.map(order => {
+    const status = statusMap[order.status] || { text: order.status, class: '' };
+    return `
     <div class="order-item">
       <div class="order-info">
-        <div class="order-no">订单号：${order.order_no}</div>
+        <div class="order-no">订单号：${order.order_no || order.id}</div>
         <div class="order-time">${formatTime(order.created_at)}</div>
+        ${order.process_remark ? `<div class="order-remark" style="font-size: 12px; color: #999; margin-top: 4px;">${escapeHtml(order.process_remark)}</div>` : ''}
       </div>
       <div class="order-amount">
         <div class="order-rice">${order.rice_amount} 米粒</div>
         <div class="order-price">¥${order.amount}</div>
       </div>
-      <div class="order-status ${order.status}">
-        ${order.status === 'paid' ? '已支付' : order.status === 'pending' ? '待支付' : '已取消'}
+      <div class="order-status ${status.class}">
+        ${status.text}
       </div>
     </div>
-  `).join('');
+  `}).join('');
 }
 
 // ==================== 自定义装扮 ====================
@@ -1262,7 +1387,6 @@ function resetBubbleCss() {
 function handleWallpaperUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
-
   const reader = new FileReader();
   reader.onload = (event) => {
     AppState.themeConfig.wallpaper = event.target.result;

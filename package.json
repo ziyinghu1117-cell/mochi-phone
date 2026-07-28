@@ -1,6 +1,6 @@
 {
   "name": "mochi-ai-chat",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "商用AI角色聊天平台 - Mochi AI Chat",
   "main": "server.js",
   "scripts": {

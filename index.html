@@ -166,6 +166,13 @@
             <polyline points="9 18 15 12 9 6"/>
           </svg>
         </div>
+        <div class="menu-item" id="menuRedeemCode">
+          <span class="menu-icon">🎁</span>
+          <span class="menu-text">兑换码</span>
+          <svg class="menu-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </div>
         <div class="menu-item" id="menuOrders">
           <span class="menu-icon">📋</span>
           <span class="menu-text">充值记录</span>
@@ -366,6 +373,77 @@
           <div class="recharge-tiers" id="rechargeTiers">
           </div>
           <p class="recharge-tip">米粒可用于AI对话，1000token = 1米粒</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 弹窗：兑换码 ==================== -->
+    <div class="modal" id="modalRedeemCode">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>兑换码</h3>
+          <button class="modal-close" data-modal="modalRedeemCode">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="redeem-code-icon">🎁</div>
+          <p class="redeem-code-desc">输入兑换码，立即获得米粒</p>
+          <div class="form-group">
+            <input type="text" class="form-input redeem-code-input" id="redeemCodeInput" placeholder="请输入兑换码">
+          </div>
+          <button class="btn-primary btn-full" id="btnRedeemSubmit">立即兑换</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 弹窗：充值申请（微信支付） ==================== -->
+    <div class="modal" id="modalPayment">
+      <div class="modal-overlay"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>充值申请</h3>
+          <button class="modal-close" data-modal="modalPayment">×</button>
+        </div>
+        <div class="modal-body">
+          <!-- 步骤1：选择金额后显示收款码 -->
+          <div id="paymentStep1">
+            <div class="payment-info">
+              <div class="payment-amount">¥<span id="paymentAmount">0</span></div>
+              <div class="payment-rice">获得 <span id="paymentRice">0</span> 米粒</div>
+            </div>
+            <div class="payment-qr-wrapper">
+              <img src="wechat-qr.png" alt="微信收款码" class="payment-qr">
+            </div>
+            <div class="payment-user-id">
+              <div class="payment-user-id-label">请在付款时备注您的用户ID：</div>
+              <div class="payment-user-id-value" id="paymentUserId">-</div>
+            </div>
+            <p class="payment-tip">
+              请使用微信扫码支付对应金额<br>
+              付款时请务必备注上方用户ID<br>
+              付款后点击下方按钮提交申请
+            </p>
+            <div class="payment-actions">
+              <button class="btn btn-full btn-primary" id="btnSubmitRecharge" onclick="submitRechargeApply()">
+                我已付款，提交申请
+              </button>
+              <button class="btn btn-full btn-secondary" data-modal="modalPayment">取消</button>
+            </div>
+          </div>
+          
+          <!-- 步骤2：申请已提交 -->
+          <div id="paymentStep2" style="display:none; text-align: center; padding: 20px 0;">
+            <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">申请已提交</div>
+            <div style="color: #666; font-size: 14px; margin-bottom: 20px;">
+              订单号：<span id="paymentOrderNo" style="font-family: monospace;">-</span>
+            </div>
+            <div style="background: #fff3cd; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #856404; margin-bottom: 20px;">
+              管理员确认到账后米粒会自动发放<br>
+              通常5分钟内到账，请耐心等待
+            </div>
+            <button class="btn btn-full btn-primary" data-modal="modalPayment">知道了</button>
+          </div>
         </div>
       </div>
     </div>
