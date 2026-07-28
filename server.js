@@ -1,12 +1,16 @@
 /**
- * Mochi AI Chat - 商用AI角色聊天平台后端服务 v2.0
- * 功能：用户系统、JWT鉴权、SQLite数据库、对话云端存储、按Token计费、支付系统、社区管理
+ * Mochi AI Chat - 商用AI角色聊天平台后端服务 v2.1
+ * 功能：用户系统、JWT鉴权、JSON文件数据库、对话云端存储、按Token计费、支付系统、社区管理
+ * 
+ * v2.1 更新：
+ * - 替换 better-sqlite3 为纯JS JSON文件存储，零编译依赖
+ * - 支持 Render 等平台零配置部署
  */
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const Database = require('better-sqlite3');
+const Database = require('./db');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const app = express();
@@ -22,7 +26,7 @@ const CONFIG = {
   JWT_SECRET: process.env.JWT_SECRET || 'mochi_ai_chat_default_secret',
   JWT_EXPIRES_IN: parseInt(process.env.JWT_EXPIRES_IN || '604800'),
   
-  DB_PATH: process.env.DB_PATH || './mochi.db',
+  DATA_DIR: process.env.DATA_DIR || './data',
   
   TOKENS_PER_RICE: parseInt(process.env.TOKENS_PER_RICE || '1000'),
   NEW_USER_RICE: parseInt(process.env.NEW_USER_RICE || '1000'),
@@ -47,118 +51,18 @@ function parseRechargeTiers(str) {
 }
 
 // ==================== 数据库初始化 ====================
-const db = new Database(CONFIG.DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+const db = new Database(CONFIG.DATA_DIR);
 
 function initDatabase() {
-  // 用户表
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      nickname TEXT DEFAULT '新用户',
-      avatar TEXT DEFAULT '',
-      description TEXT DEFAULT '',
-      rice_balance INTEGER DEFAULT 0,
-      created_at INTEGER NOT NULL
-    );
-  `);
-
-  // 角色表
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS characters (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      name TEXT NOT NULL,
-      avatar TEXT DEFAULT '',
-      persona TEXT NOT NULL,
-      description TEXT DEFAULT '',
-      tags TEXT DEFAULT '[]',
-      is_public INTEGER DEFAULT 0,
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-  `);
-
-  // 对话表
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS conversations (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      character_id INTEGER NOT NULL,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id),
-      FOREIGN KEY (character_id) REFERENCES characters(id)
-    );
-  `);
-
-  // 消息表
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      conversation_id INTEGER NOT NULL,
-      role TEXT NOT NULL,
-      content TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (conversation_id) REFERENCES conversations(id)
-    );
-  `);
-
-  // 交易记录表
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS transactions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      type TEXT NOT NULL,
-      amount INTEGER NOT NULL,
-      balance_after INTEGER NOT NULL,
-      description TEXT DEFAULT '',
-      detail TEXT DEFAULT '',
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-  `);
-
-  // 社区角色表
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS community_characters (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      character_id INTEGER NOT NULL,
-      likes INTEGER DEFAULT 0,
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id),
-      FOREIGN KEY (character_id) REFERENCES characters(id)
-    );
-  `);
-
-  // 订单表
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS orders (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NOT NULL,
-      order_no TEXT UNIQUE NOT NULL,
-      amount REAL NOT NULL,
-      rice_amount INTEGER NOT NULL,
-      status TEXT DEFAULT 'pending',
-      pay_method TEXT DEFAULT '',
-      created_at INTEGER NOT NULL,
-      paid_at INTEGER,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-  `);
-
-  console.log('✅ 数据库初始化完成');
+  // JSON数据库不需要建表，文件会自动创建
+  console.log('✅ 数据库初始化完成（JSON文件存储）');
 }
 initDatabase();
 
 // 初始化社区示例角色
 function initCommunityCharacters() {
-  const count = db.prepare('SELECT COUNT(*) as count FROM community_characters').get();
-  if (count.count > 0) return;
+  const communityChars = db.prepare('SELECT * FROM community_characters').all();
+  if (communityChars.length > 0) return;
 
   const sampleCharacters = [
     {
@@ -213,25 +117,27 @@ function initCommunityCharacters() {
 
   const insertChar = db.prepare(`
     INSERT INTO characters (user_id, name, avatar, persona, description, tags, is_public, created_at)
-    VALUES (0, ?, ?, ?, ?, ?, 1, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
   
   const insertCommunity = db.prepare(`
     INSERT INTO community_characters (user_id, character_id, likes, created_at)
-    VALUES (0, ?, ?, ?)
+    VALUES (?, ?, ?, ?)
   `);
 
   const now = Date.now();
   sampleCharacters.forEach((char, index) => {
     const charResult = insertChar.run(
+      0,
       char.name,
       char.avatar,
       char.persona,
       char.description,
       char.tags,
+      1,
       now - (index * 86400000 * 5)
     );
-    insertCommunity.run(charResult.lastInsertRowid, char.likes, now - (index * 86400000 * 5));
+    insertCommunity.run(0, charResult.lastInsertRowid, char.likes, now - (index * 86400000 * 5));
   });
 
   console.log('✅ 社区示例角色初始化完成');
@@ -468,19 +374,16 @@ app.get('/api/user/transactions', authMiddleware, (req, res) => {
     const size = parseInt(pageSize);
     const pageNum = parseInt(page);
 
-    let query = 'SELECT * FROM transactions WHERE user_id = ?';
-    const params = [userId];
+    let txs = db.prepare('SELECT * FROM transactions WHERE user_id = ? ORDER BY created_at DESC').all(userId);
 
     if (type) {
-      query += ' AND type = ?';
-      params.push(type);
+      txs = txs.filter(t => t.type === type);
     }
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(size, (pageNum - 1) * size);
+    const start = (pageNum - 1) * size;
+    const result = txs.slice(start, start + size);
 
-    const txs = db.prepare(query).all(...params);
-    res.json({ success: true, data: txs });
+    res.json({ success: true, data: result });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -609,8 +512,9 @@ app.delete('/api/characters/:id', authMiddleware, (req, res) => {
 
     // 删除对话和消息
     const conversations = db.prepare('SELECT id FROM conversations WHERE character_id = ? AND user_id = ?').all(characterId, userId);
-    const deleteMsg = db.prepare('DELETE FROM messages WHERE conversation_id = ?');
-    conversations.forEach(c => deleteMsg.run(c.id));
+    conversations.forEach(c => {
+      db.prepare('DELETE FROM messages WHERE conversation_id = ?').run(c.id);
+    });
 
     db.prepare('DELETE FROM conversations WHERE character_id = ? AND user_id = ?').run(characterId, userId);
     db.prepare('DELETE FROM community_characters WHERE character_id = ?').run(characterId);
@@ -630,23 +534,23 @@ app.get('/api/conversations', authMiddleware, (req, res) => {
     const userId = req.user.id;
     const { characterId } = req.query;
 
-    let query = `
-      SELECT c.*, ch.name as character_name, ch.avatar as character_avatar
-      FROM conversations c
-      JOIN characters ch ON c.character_id = ch.id
-      WHERE c.user_id = ?
-    `;
-    const params = [userId];
+    let conversations = db.prepare('SELECT * FROM conversations WHERE user_id = ? ORDER BY updated_at DESC').all(userId);
 
     if (characterId) {
-      query += ' AND c.character_id = ?';
-      params.push(characterId);
+      conversations = conversations.filter(c => c.character_id == characterId);
     }
 
-    query += ' ORDER BY c.updated_at DESC';
+    // 关联角色信息
+    const result = conversations.map(conv => {
+      const char = db.prepare('SELECT name, avatar FROM characters WHERE id = ?').get(conv.character_id);
+      return {
+        ...conv,
+        character_name: char?.name || '',
+        character_avatar: char?.avatar || ''
+      };
+    });
 
-    const conversations = db.prepare(query).all(...params);
-    res.json({ success: true, data: conversations });
+    res.json({ success: true, data: result });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -751,7 +655,6 @@ app.post('/api/recharge/create', authMiddleware, (req, res) => {
       VALUES (?, ?, ?, ?, 'pending', ?, ?)
     `).run(userId, orderNo, tier.price, tier.total, CONFIG.PAY_CHANNEL, now);
 
-    // 模拟支付直接返回成功
     let payUrl = '';
     if (CONFIG.PAY_CHANNEL === 'mock') {
       payUrl = '';
@@ -848,19 +751,16 @@ app.get('/api/orders', authMiddleware, (req, res) => {
     const size = parseInt(pageSize);
     const pageNum = parseInt(page);
 
-    let query = 'SELECT * FROM orders WHERE user_id = ?';
-    const params = [userId];
+    let orders = db.prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC').all(userId);
 
     if (status) {
-      query += ' AND status = ?';
-      params.push(status);
+      orders = orders.filter(o => o.status === status);
     }
 
-    query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-    params.push(size, (pageNum - 1) * size);
+    const start = (pageNum - 1) * size;
+    const result = orders.slice(start, start + size);
 
-    const orders = db.prepare(query).all(...params);
-    res.json({ success: true, data: orders });
+    res.json({ success: true, data: result });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -875,46 +775,50 @@ app.get('/api/community/characters', (req, res) => {
     const size = parseInt(pageSize) || CONFIG.COMMUNITY_PAGE_SIZE;
     const pageNum = parseInt(page);
 
-    let query = `
-      SELECT cc.*, c.name, c.avatar, c.description, c.tags, u.nickname as author
-      FROM community_characters cc
-      JOIN characters c ON cc.character_id = c.id
-      LEFT JOIN users u ON cc.user_id = u.id
-      WHERE c.is_public = 1
-    `;
-    const params = [];
+    // 获取社区角色
+    let communityChars = db.prepare('SELECT * FROM community_characters').all();
+
+    // 关联角色信息
+    let characters = communityChars.map(cc => {
+      const char = db.prepare('SELECT * FROM characters WHERE id = ? AND is_public = 1').get(cc.character_id);
+      if (!char) return null;
+      
+      const user = db.prepare('SELECT nickname FROM users WHERE id = ?').get(cc.user_id);
+      
+      return {
+        id: cc.id,
+        name: char.name,
+        avatar: char.avatar,
+        description: char.description,
+        tags: JSON.parse(char.tags || '[]'),
+        author: user?.nickname || '官方',
+        likes: cc.likes,
+        createdAt: cc.created_at
+      };
+    }).filter(c => c !== null);
 
     // 搜索过滤
     if (search) {
-      const keyword = `%${search.toLowerCase()}%`;
-      query += ` AND (LOWER(c.name) LIKE ? OR LOWER(c.description) LIKE ?)`;
-      params.push(keyword, keyword);
+      const keyword = search.toLowerCase();
+      characters = characters.filter(c =>
+        c.name.toLowerCase().includes(keyword) ||
+        c.description.toLowerCase().includes(keyword) ||
+        (c.tags && c.tags.some(t => t.toLowerCase().includes(keyword)))
+      );
     }
 
     // 排序
     if (sort === 'hot') {
-      query += ' ORDER BY cc.likes DESC';
+      characters.sort((a, b) => b.likes - a.likes);
     } else if (sort === 'new') {
-      query += ' ORDER BY cc.created_at DESC';
+      characters.sort((a, b) => b.createdAt - a.createdAt);
     }
 
-    const total = db.prepare(query.replace('SELECT cc.*, c.name, c.avatar, c.description, c.tags, u.nickname as author', 'SELECT COUNT(*) as count')).get(...params).count;
+    const total = characters.length;
+    const start = (pageNum - 1) * size;
+    const data = characters.slice(start, start + size);
 
-    query += ' LIMIT ? OFFSET ?';
-    params.push(size, (pageNum - 1) * size);
-
-    const characters = db.prepare(query).all(...params).map(c => ({
-      id: c.id,
-      name: c.name,
-      avatar: c.avatar,
-      description: c.description,
-      author: c.author || '官方',
-      likes: c.likes,
-      createdAt: c.created_at,
-      tags: JSON.parse(c.tags || '[]')
-    }));
-
-    res.json({ success: true, data: { list: characters, total, page: pageNum, pageSize: size } });
+    res.json({ success: true, data: { list: data, total, page: pageNum, pageSize: size } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -925,29 +829,29 @@ app.get('/api/community/characters/:id', (req, res) => {
   try {
     const id = req.params.id;
     
-    const char = db.prepare(`
-      SELECT cc.*, c.name, c.avatar, c.description, c.persona, c.tags, u.nickname as author
-      FROM community_characters cc
-      JOIN characters c ON cc.character_id = c.id
-      LEFT JOIN users u ON cc.user_id = u.id
-      WHERE cc.id = ? AND c.is_public = 1
-    `).get(id);
+    const cc = db.prepare('SELECT * FROM community_characters WHERE id = ?').get(id);
+    if (!cc) {
+      return res.status(404).json({ success: false, error: '角色不存在' });
+    }
 
+    const char = db.prepare('SELECT * FROM characters WHERE id = ? AND is_public = 1').get(cc.character_id);
     if (!char) {
       return res.status(404).json({ success: false, error: '角色不存在' });
     }
 
+    const user = db.prepare('SELECT nickname FROM users WHERE id = ?').get(cc.user_id);
+
     res.json({
       success: true,
       data: {
-        id: char.id,
+        id: cc.id,
         name: char.name,
         avatar: char.avatar,
         description: char.description,
         persona: char.persona,
-        author: char.author || '官方',
-        likes: char.likes,
-        createdAt: char.created_at,
+        author: user?.nickname || '官方',
+        likes: cc.likes,
+        createdAt: cc.created_at,
         tags: JSON.parse(char.tags || '[]')
       }
     });
@@ -1229,13 +1133,16 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
 // ==================== 运营统计API ====================
 app.get('/api/admin/stats', (req, res) => {
   try {
-    const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
-    const totalRice = db.prepare('SELECT SUM(rice_balance) as total FROM users').get().total || 0;
-    const totalRecharge = db.prepare("SELECT SUM(amount) as total FROM transactions WHERE type = 'recharge'").get().total || 0;
-    const totalConsume = db.prepare("SELECT SUM(amount) as total FROM transactions WHERE type = 'consume'").get().total || 0;
-    const totalCharacters = db.prepare('SELECT COUNT(*) as count FROM characters').get().count;
-    const totalConversations = db.prepare('SELECT COUNT(*) as count FROM conversations').get().count;
-    const totalOrders = db.prepare('SELECT COUNT(*) as count FROM orders').get().count;
+    const users = db.prepare('SELECT * FROM users').all();
+    const transactions = db.prepare('SELECT * FROM transactions').all();
+    const characters = db.prepare('SELECT * FROM characters').all();
+    const conversations = db.prepare('SELECT * FROM conversations').all();
+    const orders = db.prepare('SELECT * FROM orders').all();
+
+    const totalUsers = users.length;
+    const totalRice = users.reduce((sum, u) => sum + (u.rice_balance || 0), 0);
+    const totalRecharge = transactions.filter(t => t.type === 'recharge').reduce((sum, t) => sum + t.amount, 0);
+    const totalConsume = transactions.filter(t => t.type === 'consume').reduce((sum, t) => sum + t.amount, 0);
 
     res.json({
       success: true,
@@ -1244,9 +1151,9 @@ app.get('/api/admin/stats', (req, res) => {
         totalRice,
         totalRecharge,
         totalConsume,
-        totalCharacters,
-        totalConversations,
-        totalOrders
+        totalCharacters: characters.length,
+        totalConversations: conversations.length,
+        totalOrders: orders.length
       }
     });
   } catch (err) {
@@ -1266,10 +1173,11 @@ app.get('*', (req, res) => {
 
 // ==================== 启动服务 ====================
 app.listen(PORT, () => {
-  console.log(`\n🚀 Mochi AI Chat v2.0 服务已启动`);
+  console.log(`\n🚀 Mochi AI Chat v2.1 服务已启动`);
   console.log(`📍 服务地址: http://localhost:${PORT}`);
   console.log(`💰 计费方式: 按Token用量计费 (${CONFIG.TOKENS_PER_RICE} token = 1米粒)`);
   console.log(`🎁 新用户赠送: ${CONFIG.NEW_USER_RICE} 米粒`);
-  console.log(`💾 数据库: ${CONFIG.DB_PATH}`);
-  console.log(`🔐 支付渠道: ${CONFIG.PAY_CHANNEL}\n`);
+  console.log(`💾 数据库: JSON文件存储 (${CONFIG.DATA_DIR})`);
+  console.log(`🔐 支付渠道: ${CONFIG.PAY_CHANNEL}`);
+  console.log(`⚡ 零编译依赖，支持 Render/Vercel 直接部署\n`);
 });
