@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Mochi-phone 🌸</title>
+<style>
+  :root {
+    --pink: #ff7eb3;
+    --pink-light: #ffd6e7;
+    --pink-bg: #fff0f5;
+    --purple: #b19cd9;
+    --text: #4a2c3a;
+    --gray: #888;
+    --bg: #fce4ec;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(180deg, #fce4ec 0%, #f3e5f5 100%);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+  }
+  /* ---- 登录页 ---- */
+  .auth-screen {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px; text-align: center;
+  }
+  .auth-screen h1 { font-size: 2rem; margin-bottom: 8px; }
+  .auth-screen .emoji { font-size: 4rem; margin-bottom: 12px; }
+  .auth-screen p { color: var(--gray); font-size: 0.85rem; margin-bottom: 24px; }
+  .auth-screen input {
+    width: 100%; padding: 14px 16px; margin-bottom: 12px;
+    border: 2px solid var(--pink-light); border-radius: 16px;
+    font-size: 1rem; outline: none; transition: border .2s;
+    background: rgba(255,255,255,0.8);
+  }
+  .auth-screen input:focus { border-color: var(--pink); }
+  .btn {
+    width: 100%; padding: 14px; border: none; border-radius: 16px;
+    font-size: 1rem; font-weight: 600; cursor: pointer; transition: transform .15s, opacity .2s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: linear-gradient(135deg, var(--pink), var(--purple)); color: #fff; }
+  .btn-ghost { background: transparent; color: var(--pink); margin-top: 8px; }
+  .btn-outline { background: rgba(255,255,255,0.7); color: var(--pink); border: 2px solid var(--pink); }
+  .auth-toggle { margin-top: 16px; font-size: 0.9rem; color: var(--gray); }
+  .auth-toggle a { color: var(--pink); text-decoration: none; font-weight: 600; }
+
+  /* ---- 主界面 ---- */
+  .app-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 10;
+    border-bottom: 1px solid rgba(255,126,179,0.15);
+  }
+  .app-header h2 { font-size: 1.1rem; }
+  .beans-badge {
+    background: linear-gradient(135deg, #ffd700, #ffaa00); color: #fff;
+    padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 700;
+  }
+  .tab-bar {
+    display: flex; gap: 4px; padding: 8px 12px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 8px 16px; border: none; border-radius: 20px;
+    background: rgba(255,255,255,0.6); color: var(--gray);
+    font-size: 0.9rem; white-space: nowrap; cursor: pointer; transition: all .2s;
+  }
+  .tab-btn.active { background: var(--pink); color: #fff; }
+
+  /* ---- 角色卡片 ---- */
+  .char-grid { padding: 12px; display: grid; gap: 12px; }
+  .char-card {
+    background: rgba(255,255,255,0.85); border-radius: 20px; padding: 16px;
+    box-shadow: 0 2px 12px rgba(255,126,179,0.1); cursor: pointer;
+    transition: transform .15s;
+  }
+  .char-card:active { transform: scale(0.98); }
+  .char-card h3 { font-size: 1.1rem; margin-bottom: 4px; }
+  .char-card p { font-size: 0.85rem; color: var(--gray); }
+  .char-card .tag {
+    display: inline-block; background: var(--pink-light); color: var(--pink);
+    padding: 2px 10px; border-radius: 10px; font-size: 0.75rem; margin-top: 8px; margin-right: 6px;
+  }
+  .char-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .char-actions button {
+    flex: 1; padding: 8px; border: none; border-radius: 12px;
+    font-size: 0.85rem; cursor: pointer;
+  }
+  .btn-chat { background: var(--pink); color: #fff; }
+  .btn-edit { background: rgba(177,156,217,0.2); color: var(--purple); }
+
+  /* ---- 聊天页 ---- */
+  .chat-container { display: flex; flex-direction: column; height: calc(100vh - 120px); }
+  .chat-header {
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    background: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,126,179,0.1);
+  }
+  .chat-header .back { cursor: pointer; font-size: 1.2rem; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 0.95rem; line-height: 1.5; }
+  .msg-user { align-self: flex-end; background: var(--pink); color: #fff; border-bottom-right-radius: 4px; }
+  .msg-bot { align-self: flex-start; background: rgba(255,255,255,0.9); border-bottom-left-radius: 4px; }
+  .msg-bot.typing::after { content: '▍'; animation: blink 1s infinite; }
+  @keyframes blink { 0%,50% { opacity: 1; } 51%,100% { opacity: 0; } }
+  .chat-input {
+    display: flex; gap: 8px; padding: 12px 16px;
+    background: rgba(255,255,255,0.8); border-top: 1px solid rgba(255,126,179,0.1);
+  }
+  .chat-input input {
+    flex: 1; padding: 12px 16px; border: 2px solid var(--pink-light);
+    border-radius: 20px; font-size: 0.95rem; outline: none;
+  }
+  .chat-input button {
+    padding: 12px 20px; border: none; border-radius: 20px;
+    background: var(--pink); color: #fff; font-weight: 600; cursor: pointer;
+  }
+
+  /* ---- 底部导航 ---- */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 480px;
+    display: flex; justify-content: space-around; align-items: center;
+    padding: 10px 0; background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(10px); border-top: 1px solid rgba(255,126,179,0.15);
+  }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; font-size: 0.7rem; color: var(--gray); }
+  .nav-item.active { color: var(--pink); }
+  .nav-item .icon { font-size: 1.4rem; }
+
+  /* ---- 充值页 ---- */
+  .recharge-grid { padding: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .recharge-card {
+    background: rgba(255,255,255,0.85); border-radius: 16px; padding: 20px;
+    text-align: center; cursor: pointer; border: 2px solid transparent; transition: all .2s;
+  }
+  .recharge-card:hover { border-color: var(--pink); }
+  .recharge-card .price { font-size: 1.5rem; font-weight: 700; color: var(--pink); }
+  .recharge-card .beans { font-size: 0.85rem; color: var(--gray); margin-top: 4px; }
+
+  /* ---- 通用 ---- */
+  .hidden { display: none !important; }
+  .section-title { padding: 16px 16px 8px; font-size: 1rem; font-weight: 600; }
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: #fff; padding: 10px 20px; border-radius: 10px;
+    font-size: 0.9rem; z-index: 100; animation: fadeIn .3s;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+</style>
+</head>
+<body>
+
+<!-- ===== 登录/注册页 ===== -->
+<div id="authScreen" class="auth-screen">
+  <div class="emoji">🌸</div>
+  <h1>Mochi-phone</h1>
+  <p id="authSubtitle">登录以继续<br/>账号仅用于登录，与游戏内人设无关</p>
+  <input id="authUsername" placeholder="账号名" autocomplete="username" />
+  <input id="authPassword" type="password" placeholder="密码" autocomplete="current-password" />
+  <button class="btn btn-primary" id="btnAuth" onclick="handleAuth()">登录</button>
+  <button class="btn btn-outline" id="btnGuest" onclick="guestLogin()">游客访问</button>
+  <div class="auth-toggle">
+    <span id="authToggleText">没有账号？</span>
+    <a href="#" id="authToggleLink" onclick="toggleAuthMode()">去注册</a>
+  </div>
+</div>
+
+<!-- ===== 主应用 ===== -->
+<div id="appScreen" class="hidden">
+  <div class="app-header">
+    <h2 id="headerTitle">🌸 Mochi-phone</h2>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="beans-badge" id="beansBadge">0 豆子</span>
+      <button onclick="logout()" style="border:none;background:none;font-size:1.2rem;cursor:pointer;">🚪</button>
+    </div>
+  </div>
+
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn active" data-tab="chat" onclick="switchTab('chat',this)">💬 角色聊天</button>
+    <button class="tab-btn" data-tab="chars" onclick="switchTab('chars',this)">👤 我的角色</button>
+    <button class="tab-btn" data-tab="community" onclick="switchTab('community',this)">🌐 人设社区</button>
+    <button class="tab-btn" data-tab="scripts" onclick="switchTab('scripts',this)">📖 文游</button>
+    <button class="tab-btn" data-tab="memories" onclick="switchTab('memories',this)">💭 记忆</button>
+    <button class="tab-btn" data-tab="mine" onclick="switchTab('mine',this)">👤 我的</button>
+  </div>
+
+  <!-- 角色聊天列表 -->
+  <div id="tab-chat" class="tab-content">
+    <div class="char-grid" id="charGrid"></div>
+  </div>
+
+  <!-- 我的角色 -->
+  <div id="tab-chars" class="tab-content hidden">
+    <div style="padding:12px;">
+      <button class="btn btn-primary" onclick="showCreateChar()">＋ 新建角色</button>
+    </div>
+    <div class="char-grid" id="myCharsGrid"></div>
+  </div>
+
+  <!-- 人设社区 -->
+  <div id="tab-community" class="tab-content hidden">
+    <div class="section-title">官方人设</div>
+    <div class="char-grid" id="officialGrid"></div>
+  </div>
+
+  <!-- 文游 -->
+  <div id="tab-scripts" class="tab-content hidden">
+    <div class="section-title">剧本库</div>
+    <div class="char-grid" id="scriptsGrid"></div>
+  </div>
+
+  <!-- 记忆 -->
+  <div id="tab-memories" class="tab-content hidden">
+    <div style="padding:12px;">
+      <textarea id="memoryInput" placeholder="新增记忆内容..." style="width:100%;padding:10px;border-radius:12px;border:2px solid #ffd6e7;outline:none;resize:vertical;min-height:60px;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <select id="memoryType" style="padding:8px;border-radius:10px;border:1px solid #ccc;">
+          <option value="事件">事件</option>
+          <option value="用户资料">用户资料</option>
+          <option value="角色关系">角色关系</option>
+          <option value="偏好">偏好</option>
+          <option value="禁忌">禁忌</option>
+        </select>
+        <button class="btn btn-primary" onclick="addMemory()">保存记忆</button>
+      </div>
+    </div>
+    <div class="char-grid" id="memoriesList"></div>
+  </div>
+
+  <!-- 我的 -->
+  <div id="tab-mine" class="tab-content hidden">
+    <div class="recharge-grid" id="rechargeGrid">
+      <div class="recharge-card" onclick="recharge(6)"><div class="price">¥6</div><div class="beans">60 豆子</div></div>
+      <div class="recharge-card" onclick="recharge(18)"><div class="price">¥18</div><div class="beans">200 豆子</div></div>
+      <div class="recharge-card" onclick="recharge(30)"><div class="price">¥30</div><div class="beans">360 豆子</div></div>
+      <div class="recharge-card" onclick="recharge(68)"><div class="price">¥68</div><div class="beans">900 豆子</div></div>
+    </div>
+    <div style="padding:0 16px;">
+      <div class="section-title">消费明细</div>
+      <div id="txList" style="font-size:0.85rem;color:var(--gray);"></div>
+    </div>
+    <div style="padding:16px;">
+      <button class="btn btn-outline" onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <!-- 聊天界面 -->
+  <div id="chatScreen" class="hidden" style="position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;height:100vh;background:var(--bg);z-index:20;">
+    <div class="chat-header">
+      <span class="back" onclick="closeChat()">←</span>
+      <div style="flex:1;text-align:center;font-weight:600;" id="chatCharName"></div>
+      <span style="width:20px;"></span>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input">
+      <input id="chatInput" placeholder="说点什么..." onkeydown="if(event.key==='Enter')sendMessage()" />
+      <button onclick="sendMessage()">发送</button>
+    </div>
+  </div>
+
+  <!-- 创建角色弹窗 -->
+  <div id="createCharModal" class="hidden" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:30;display:flex;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:20px;padding:24px;width:90%;max-width:400px;">
+      <h3 style="margin-bottom:16px;">新建角色</h3>
+      <input id="newCharName" placeholder="角色名称" style="width:100%;padding:10px;margin-bottom:10px;border:2px solid #ffd6e7;border-radius:12px;outline:none;" />
+      <textarea id="newCharDesc" placeholder="角色简介" style="width:100%;padding:10px;margin-bottom:10px;border:2px solid #ffd6e7;border-radius:12px;outline:none;min-height:50px;resize:vertical;"></textarea>
+      <textarea id="newCharPrompt" placeholder="角色人设 Prompt（系统指令）" style="width:100%;padding:10px;margin-bottom:10px;border:2px solid #ffd6e7;border-radius:12px;outline:none;min-height:80px;resize:vertical;"></textarea>
+      <label style="font-size:0.85rem;color:var(--gray);"><input type="checkbox" id="newCharPublic" /> 公开到社区</label>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-outline" onclick="closeCreateChar()">取消</button>
+        <button class="btn btn-primary" onclick="createChar()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 充值弹窗 -->
+  <div id="rechargeModal" class="hidden" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:30;display:flex;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:20px;padding:24px;width:90%;max-width:360px;text-align:center;">
+      <h3 style="margin-bottom:12px;">扫码支付</h3>
+      <div id="qrPlaceholder" style="width:200px;height:200px;margin:0 auto 12px;background:#f0f0f0;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:#999;">[收款码]</div>
+      <p style="font-size:0.85rem;color:var(--gray);margin-bottom:8px;">付款后请填写交易号</p>
+      <input id="txInput" placeholder="付款备注/交易号" style="width:100%;padding:10px;margin-bottom:12px;border:2px solid #ffd6e7;border-radius:12px;outline:none;" />
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline" onclick="closeRecharge()">取消</button>
+        <button class="btn btn-primary" onclick="submitRecharge()">提交审核</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ========== 全局状态 ==========
+let token = localStorage.getItem('mochi_token') || '';
+let currentUser = null;
+let currentChar = null;
+let isRegister = false;
+let currentRechargeAmount = 0;
+
+// ========== 启动 ==========
+init();
+
+async function init() {
+  if (token) {
+    try {
+      const me = await api('/api/me');
+      currentUser = me;
+      showApp();
+      await loadBeans();
+    } catch { logout(); }
+  } else {
+    showAuth();
+  }
+}
+
+// ========== 认证 ==========
+function toggleAuthMode() {
+  isRegister = !isRegister;
+  document.getElementById('btnAuth').textContent = isRegister ? '注册' : '登录';
+  document.getElementById('authToggleText').textContent = isRegister ? '已有账号？' : '没有账号？';
+  document.getElementById('authToggleLink').textContent = isRegister ? '去登录' : '去注册';
+  document.getElementById('authSubtitle').innerHTML = isRegister
+    ? '注册后开始你的陪伴之旅<br/>新用户赠送 30 豆子'
+    : '登录以继续<br/>账号仅用于登录，与游戏内人设无关';
+}
+
+async function handleAuth() {
+  const username = document.getElementById('authUsername').value.trim();
+  const password = document.getElementById('authPassword').value;
+  if (!username || !password) return toast('请填写账号和密码');
+
+  const endpoint = isRegister ? '/api/register' : '/api/login';
+  try {
+    const res = await api(endpoint, 'POST', { username, password });
+    token = res.token;
+    localStorage.setItem('mochi_token', token);
+    currentUser = res;
+    if (res.isAdmin) { window.location.href = '/admin'; return; }
+    showApp();
+    await loadBeans();
+    toast(isRegister ? '注册成功！赠送 30 豆子' : '登录成功');
+  } catch (e) { toast(e.message); }
+}
+
+async function guestLogin() {
+  try {
+    const res = await api('/api/guest', 'POST', {});
+    token = res.token;
+    localStorage.setItem('mochi_token', token);
+    currentUser = res;
+    showApp();
+    toast('游客模式已开启');
+  } catch (e) { toast(e.message); }
+}
+
+function logout() {
+  token = '';
+  currentUser = null;
+  localStorage.removeItem('mochi_token');
+  showAuth();
+}
+
+// ========== UI 切换 ==========
+function showAuth() {
+  document.getElementById('authScreen').classList.remove('hidden');
+  document.getElementById('appScreen').classList.add('hidden');
+}
+function showApp() {
+  document.getElementById('authScreen').classList.add('hidden');
+  document.getElementById('appScreen').classList.remove('hidden');
+  document.getElementById('headerTitle').textContent = `🌸 ${currentUser.username}`;
+  loadCharacters();
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+  document.getElementById('tab-' + tab).classList.remove('hidden');
+  if (tab === 'chars') loadMyCharacters();
+  if (tab === 'community') loadOfficialChars();
+  if (tab === 'scripts') loadScripts();
+  if (tab === 'memories') loadMemories();
+  if (tab === 'mine') loadTransactions();
+}
+
+// ========== 角色 ==========
+async function loadCharacters() {
+  try {
+    const data = await api('/api/characters');
+    const grid = document.getElementById('charGrid');
+    const all = [...(data.official || []), ...(data.own || [])];
+    grid.innerHTML = all.map(c => `
+      <div class="char-card" onclick="openChat('${c.id}','${c.name}')">
+        <h3>${c.name}</h3>
+        <p>${c.desc || ''}</p>
+        ${c.tags?.map(t => `<span class="tag">${t}</span>`).join('') || ''}
+        ${c.official ? '<span class="tag" style="background:#fff3cd;color:#856404;">官方</span>' : ''}
+      </div>
+    `).join('');
+  } catch (e) { toast(e.message); }
+}
+
+async function loadMyCharacters() {
+  try {
+    const data = await api('/api/characters');
+    const grid = document.getElementById('myCharsGrid');
+    grid.innerHTML = (data.own || []).map(c => `
+      <div class="char-card">
+        <h3>${c.name}</h3>
+        <p>${c.desc || ''}</p>
+        <div class="char-actions">
+          <button class="btn-chat" onclick="openChat('${c.id}','${c.name}')">聊天</button>
+          <button class="btn-edit" onclick="deleteChar('${c.id}')">删除</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) { toast(e.message); }
+}
+
+async function loadOfficialChars() {
+  try {
+    const data = await api('/api/characters');
+    const grid = document.getElementById('officialGrid');
+    grid.innerHTML = (data.official || []).map(c => `
+      <div class="char-card" onclick="openChat('${c.id}','${c.name}')">
+        <h3>${c.name}</h3>
+        <p>${c.desc || ''}</p>
+        ${c.tags?.map(t => `<span class="tag">${t}</span>`).join('') || ''}
+      </div>
+    `).join('');
+  } catch (e) { toast(e.message); }
+}
+
+function showCreateChar() { document.getElementById('createCharModal').classList.remove('hidden'); }
+function closeCreateChar() { document.getElementById('createCharModal').classList.add('hidden'); }
+
+async function createChar() {
+  const name = document.getElementById('newCharName').value.trim();
+  const desc = document.getElementById('newCharDesc').value.trim();
+  const prompt = document.getElementById('newCharPrompt').value.trim();
+  const isPublic = document.getElementById('newCharPublic').checked;
+  if (!name || !prompt) return toast('名称和 Prompt 必填');
+  try {
+    await api('/api/characters', 'POST', { name, desc, prompt, isPublic });
+    toast('角色创建成功');
+    closeCreateChar();
+    document.getElementById('newCharName').value = '';
+    document.getElementById('newCharDesc').value = '';
+    document.getElementById('newCharPrompt').value = '';
+    document.getElementById('newCharPublic').checked = false;
+    loadMyCharacters();
+  } catch (e) { toast(e.message); }
+}
+
+async function deleteChar(id) {
+  if (!confirm('确定删除该角色？聊天记录也会一并删除。')) return;
+  try { await api('/api/characters/' + id, 'DELETE'); toast('已删除'); loadMyCharacters(); loadCharacters(); }
+  catch (e) { toast(e.message); }
+}
+
+// ========== 聊天（SSE 流式） ==========
+async function openChat(charId, charName) {
+  currentChar = { id: charId, name: charName };
+  document.getElementById('chatCharName').textContent = charName;
+  document.getElementById('chatScreen').classList.remove('hidden');
+
+  // 加载历史
+  try {
+    const data = await api('/api/chats/' + charId);
+    const container = document.getElementById('chatMessages');
+    container.innerHTML = (data.history || []).map(m => `
+      <div class="msg ${m.role === 'user' ? 'msg-user' : 'msg-bot'}">${escapeHtml(m.content)}</div>
+    `).join('');
+    container.scrollTop = container.scrollHeight;
+  } catch {}
+}
+
+function closeChat() {
+  document.getElementById('chatScreen').classList.add('hidden');
+  currentChar = null;
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !currentChar) return;
+
+  const container = document.getElementById('chatMessages');
+  container.innerHTML += `<div class="msg msg-user">${escapeHtml(text)}</div>`;
+  container.innerHTML += `<div class="msg msg-bot typing" id="streamingMsg"></div>`;
+  container.scrollTop = container.scrollHeight;
+  input.value = '';
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ characterId: currentChar.id, message: text })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || '发送失败');
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    const streamEl = document.getElementById('streamingMsg');
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('event: done')) {
+          streamEl.classList.remove('typing');
+        } else if (line.startsWith('data: ')) {
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.content) {
+              fullText += json.content;
+              streamEl.textContent = fullText;
+              container.scrollTop = container.scrollHeight;
+            }
+            if (json.beansLeft !== undefined) {
+              document.getElementById('beansBadge').textContent = `${json.beansLeft} 豆子`;
+            }
+          } catch {}
+        }
+      }
+    }
+
+    streamEl.classList.remove('typing');
+    loadBeans(); // 刷新豆子数
+  } catch (e) {
+    toast(e.message);
+    const streamEl = document.getElementById('streamingMsg');
+    if (streamEl) { streamEl.textContent = '⚠️ ' + e.message; streamEl.classList.remove('typing'); }
+  }
+}
+
+// ========== 记忆 ==========
+async function loadMemories() {
+  try {
+    const data = await api('/api/memories');
+    const list = document.getElementById('memoriesList');
+    list.innerHTML = (data.memories || []).map(m => `
+      <div class="char-card">
+        <div style="display:flex;justify-content:space-between;align-items:start;">
+          <div>
+            <span class="tag">${m.type}</span>
+            <p style="margin-top:6px;">${escapeHtml(m.content)}</p>
+          </div>
+          <button onclick="deleteMemory('${m.id}')" style="border:none;background:none;cursor:pointer;font-size:1.2rem;">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) { toast(e.message); }
+}
+
+async function addMemory() {
+  const content = document.getElementById('memoryInput').value.trim();
+  const type = document.getElementById('memoryType').value;
+  if (!content) return toast('请输入记忆内容');
+  try {
+    await api('/api/memories', 'POST', { content, type, scope: 'all' });
+    document.getElementById('memoryInput').value = '';
+    toast('记忆已保存');
+    loadMemories();
+  } catch (e) { toast(e.message); }
+}
+
+async function deleteMemory(id) {
+  try { await api('/api/memories/' + id, 'DELETE'); loadMemories(); }
+  catch (e) { toast(e.message); }
+}
+
+// ========== 豆子 & 充值 ==========
+async function loadBeans() {
+  try {
+    const me = await api('/api/me');
+    document.getElementById('beansBadge').textContent = `${me.beans} 豆子`;
+  } catch {}
+}
+
+function recharge(amount) {
+  currentRechargeAmount = amount;
+  document.getElementById('rechargeModal').classList.remove('hidden');
+}
+function closeRecharge() { document.getElementById('rechargeModal').classList.add('hidden'); }
+
+async function submitRecharge() {
+  const txId = document.getElementById('txInput').value.trim();
+  if (!txId) return toast('请填写交易号');
+  try {
+    await api('/api/recharge/submit', 'POST', { amount: currentRechargeAmount, txId });
+    toast('订单已提交，等待审核');
+    closeRecharge();
+    document.getElementById('txInput').value = '';
+  } catch (e) { toast(e.message); }
+}
+
+async function loadTransactions() {
+  try {
+    const data = await api('/api/transactions');
+    const list = document.getElementById('txList');
+    list.innerHTML = (data.transactions || [])
+      .slice().reverse().map(t => `<div style="padding:6px 0;border-bottom:1px solid #f0f0f0;">${t.desc} · ${t.amount > 0 ? '+' : ''}${t.amount}</div>`)
+      .join('') || '暂无记录';
+  } catch (e) { toast(e.message); }
+}
+
+// ========== 文游 ==========
+async function loadScripts() {
+  try {
+    const data = await api('/api/scripts');
+    const grid = document.getElementById('scriptsGrid');
+    grid.innerHTML = (data.scripts || []).map(s => `
+      <div class="char-card">
+        <h3>${s.name}</h3>
+        <p>${s.desc || ''}</p>
+        <span class="tag">${s.difficulty || '中等'}</span>
+      </div>
+    `).join('') || '<p style="padding:16px;color:#888;">暂无剧本，管理员可上传</p>';
+  } catch (e) { toast(e.message); }
+}
+
+// ========== API 工具 ==========
+async function api(url, method = 'GET', body = null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (token) opts.headers['Authorization'] = `Bearer ${token}`;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(url, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `错误 ${res.status}`);
+  return data;
+}
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
