@@ -513,12 +513,31 @@ app.put('/api/profile', authRequired, (req, res) => {
 // ============================================================
 //  静态前端（单页应用）
 // ============================================================
-app.use(express.static(path.join(__dirname, 'public')));
+const publicDir = path.join(__dirname, 'public');
+app.use(express.static(publicDir));
 
-// SPA fallback（兼容 Express 5 的通配符写法）
-app.get(/.*/, (req, res, next) => {
+// 显式处理根路径，避免 SPA fallback 失效
+app.get('/', (req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
+});
+
+// SPA fallback：所有非 /api 路由都返回 index.html
+app.use((req, res, next) => {
   if (req.path.startsWith('/api/')) return next();
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  const indexPath = path.join(publicDir, 'index.html');
+  // 确认文件存在，否则返回最小可用页面（避免空白）
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(200).send(
+      '<!doctype html><meta charset="utf-8"><title>Mochi-phone</title>' +
+      '<body style="font-family:sans-serif;background:#fce4ec;display:flex;' +
+      'align-items:center;justify-content:center;height:100vh;margin:0">' +
+      '<div style="text-align:center"><h1 style="font-size:3rem">🌸</h1>' +
+      '<h2>Mochi-phone</h2><p style="color:#888">前端文件未找到，请确认 public/index.html 已上传</p>' +
+      '<p style="color:#aaa;font-size:.8rem">API 状态：正常</p></div></body>'
+    );
+  }
 });
 
 // ============================================================

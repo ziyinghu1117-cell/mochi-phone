@@ -1,9 +1,10 @@
 {
   "name": "mochi-phone",
-  "version": "2.0.0",
-  "description": "粉色治愈系 AI 角色扮演应用 - 账号隔离版",
+  "version": "2.0.1",
+  "description": "粉色治愈系 AI 角色扮演应用 - 账号隔离版 + SSE 流式",
   "main": "server.js",
   "scripts": {
+    "postinstall": "node postinstall.js",
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
