@@ -1,73 +1,118 @@
-# Mochi-phone 🌸
+# Mochi-phone
 
-粉色治愈系 AI 角色扮演应用 —— **账号隔离版 + SSE 流式输出**
+一个粉色治愈系的 AI 角色扮演应用，支持聊天、同人创作、文游、人设社区和记忆系统。
 
-## 本次改造内容
+---
 
-### 🔐 账号数据彻底隔离
-- 每个用户拥有独立的数据目录 `data/users/<userId>/`
-- 角色、聊天记录、记忆、豆子、订单、文游存档全部按 `userId` 分文件存储
-- 跨用户数据访问在代码层就被拦截（`authRequired` 中间件）
-- 支持三种身份：注册用户 / 登录用户 / 游客（游客数据独立不污染）
+## 新增功能：注册登录 + 管理员后端 + 真实支付
 
-### ⚡ SSE 流式聊天
-- `/api/chat` 改为 Server-Sent Events 流式输出
-- 前端逐 token 渲染，打字机效果
-- 上游 `az.zlapi.vip` 已确认支持 `stream=true`
+### 用户注册登录
 
-### 📁 数据目录结构
-```
-data/
-├── users.json              # 账号表 { username: { userId, password, beans, ... } }
-├── orders.json             # 充值订单
-├── official_chars.json     # 官方人设
-├── official_scripts.json   # 官方文游剧本
-└── users/
-    ├── <userId>/characters.json   # 该用户自建角色
-    ├── <userId>/chats.json        # 该用户所有聊天记录
-    ├── <userId>/memories.json     # 该用户记忆
-    ├── <userId>/profile.json      # 该用户资料
-    ├── <userId>/transactions.json # 该用户消费明细
-    └── <userId>/scripts_save.json# 该用户文游存档
-```
+1. 访问网站时显示 **登录/注册页面**
+2. 新用户点击"去注册"创建账号
+3. 已有账号直接登录
+4. 也可选择"游客访问"免登录体验
+5. 登录后所有操作自动关联账号
+
+### 管理员后台
+
+- **访问方式**：用 ID `宛萦风`、密码 `841026` 登录，自动跳转到管理后台
+- 也可直接访问 `https://你的域名/admin`
+- **功能**：
+  - 统计概览（总订单、待审核、已通过、已拒绝、总收入、用户数）
+  - 充值订单管理（筛选、通过、拒绝、详情查看）
+  - **上传官方人设**（名称、简介、Prompt、标签）
+  - **上传文游剧本**（JSON格式）
+  - 审批通过后自动发放豆子
+
+### 支付流程
+
+1. 用户在 **我的** 页面点击充值套餐
+2. 弹出支付弹窗，显示 **收款码** + 用户 ID
+3. 用户扫码付款，并在备注中填写自己的 **用户 ID**
+4. 用户在弹窗中输入 **付款备注 ID / 交易号**
+5. 提交后，订单状态变为 **待审核**
+6. 管理员在后台审批通过后，豆子 **自动发放** 到用户账户
+
+---
 
 ## 快速部署（Render）
 
-1. Fork 本仓库
-2. 在 Render 创建 New Web Service → 连接 GitHub 仓库
-3. 设置环境变量（参考 `.env.example`）
-4. 点击 Deploy
+1. Fork 本仓库到你的 GitHub
+2. 在 [Render](https://render.com) 创建 **New Web Service**
+3. 连接你的 GitHub 仓库
+4. 设置环境变量（参考 `.env.example`）
+5. 点击 Deploy
+
+---
 
 ## 环境变量
 
 | 变量 | 说明 | 默认值 |
-|---|---|---|
-| PORT | 服务器端口 | 3000 |
-| UPSTREAM_API_KEY | AI 上游 API 密钥 | 内置测试密钥 |
-| CHAT_BEANS_COST | 每次聊天消耗豆子 | 2 |
-| BEANS_PER_CNY | 每元兑换豆子数 | 10 |
-| DEMO_INITIAL_BEANS | 新用户初始豆子 | 30 |
-| ADMIN_PASSWORD | 管理员后台密码 | 841026 |
+|------|------|--------|
+| `PORT` | 服务器端口 | `3000` |
+| `UPSTREAM_API_KEY` | AI 上游 API 密钥 | 内置测试密钥 |
+| `CHAT_BEANS_COST` | 每次聊天消耗豆子 | `2` |
+| `BEANS_PER_CNY` | 每元兑换豆子数 | `10` |
+| `RECHARGE_PACKAGES` | 充值套餐（金额:豆子） | `6:60,18:200,30:360,68:900` |
+| `DEMO_INITIAL_BEANS` | 新用户初始豆子 | `30` |
+| `ADMIN_PASSWORD` | 管理员后台密码 | `841026` |
+| `DATABASE_URL` | PostgreSQL 连接字符串 | 空（使用本地 JSON） |
+
+---
 
 ## 本地开发
 
 ```bash
+# 安装依赖
 npm install
+
+# 启动开发服务器（使用本地 JSON 文件存储）
 npm start
-# 访问 http://localhost:3000
+
+# 访问
+http://localhost:3000
 ```
 
-## 管理员
-
-用户名 `宛萦风` + 密码 `841026` 登录后自动跳转后台。
+---
 
 ## 技术栈
 
-- 后端：Node.js + Express（无额外依赖，原生 SSE）
-- 前端：单文件 SPA（无构建步骤）
-- AI：OpenAI 兼容接口（az.zlapi.vip 代理）
-- 存储：JSON 文件（开发）/ PostgreSQL（生产可扩展）
+- **后端**：Node.js + Express
+- **前端**：原生 HTML/CSS/JavaScript（单页面应用）
+- **AI**：兼容 OpenAI API 格式（默认通过 az.zlapi.vip 代理）
+- **数据持久化**：PostgreSQL（生产环境）/ JSON 文件（开发环境）
 
-## License
+---
+
+## 收款码说明
+
+收款码已以 **Base64** 形式内嵌在 `server.js` 中，无需额外文件。如需更换收款码，请修改代码中的 `QR_CODE_BASE64` 常量。
+
+---
+
+## 管理员账号
+
+| 用户名 | 密码 | 权限 |
+|--------|------|------|
+| `宛萦风` | `841026` | 管理员（登录后自动跳转后台） |
+
+管理员可在后台上传官方人设和文游剧本，管理充值订单。
+
+---
+
+## 项目结构
+
+```
+mochi-phone/
+├── server.js          # 主服务文件（含前端代码 + 32个文游剧本）
+├── package.json       # 依赖配置
+├── .env.example       # 环境变量模板
+└── README.md          # 本文件
+```
+
+---
+
+## 许可证
 
 MIT
