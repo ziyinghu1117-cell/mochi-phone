@@ -953,12 +953,17 @@ function loadEmbedFiles() {
     'manifest.webmanifest': 'application/manifest+json; charset=utf-8',
     'icons/mochi-phone-icon.svg': 'image/svg+xml'
   };
+  var loadedCount = 0;
   for (const [file, contentType] of Object.entries(staticFiles)) {
     const filePath = path.join(publicDir, file);
     if (fs.existsSync(filePath)) {
       EMBED_PUBLIC[file] = fs.readFileSync(filePath, 'utf8');
+      loadedCount++;
+    } else {
+      console.warn('[loadEmbedFiles] File not found:', filePath);
     }
   }
+  console.log('[loadEmbedFiles] Loaded', loadedCount, 'files from', publicDir);
   for (let i = 1; i <= 8; i++) {
     const avatarPath = path.join(publicDir, 'avatars', 'avatar' + i + '.png');
     if (fs.existsSync(avatarPath)) {
@@ -974,6 +979,18 @@ app.use('/js', express.static(path.join(__dirname, 'public', 'js'), { setHeaders
 app.use('/css', express.static(path.join(__dirname, 'public', 'css'), { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache') }));
 app.use('/avatars', express.static(path.join(__dirname, 'public', 'avatars')));
 app.use('/icons', express.static(path.join(__dirname, 'public', 'icons')));
+
+/* === 兜底：直接用 express.static 服务 public 根目录 === */
+/* 确保 novel-game.css, forum.js, profile.js, manifest.webmanifest 等文件始终可访问 */
+app.use(express.static(path.join(__dirname, 'public'), { 
+  index: false,
+  setHeaders: (res, filePath) => {
+    var ext = path.extname(filePath).toLowerCase();
+    if (ext === '.js' || ext === '.css' || ext === '.html') {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 
 // === 静态文件兜底 ===
 app.use((req, res, next) => {
@@ -1009,11 +1026,23 @@ app.use((req, res, next) => {
 
 app.get('/', (_req, res) => {
   var html = EMBED_PUBLIC['index.html'];
+  if (!html) {
+    /* 兜底：直接从磁盘读取 */
+    var indexPath = path.join(__dirname, 'public', 'index.html');
+    try {
+      if (fs.existsSync(indexPath)) {
+        html = fs.readFileSync(indexPath, 'utf8');
+      }
+    } catch (e) {
+      console.error('[loadIndex] Failed to read index.html:', e.message);
+    }
+  }
   if (html) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } else {
-    res.status(404).send('index.html not found');
+    console.error('[loadIndex] index.html not found in EMBED_PUBLIC or disk. __dirname:', __dirname, 'publicDir:', path.join(__dirname, 'public'));
+    res.status(404).send('index.html not found. Public dir: ' + path.join(__dirname, 'public'));
   }
 });
 
