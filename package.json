@@ -4,6 +4,7 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
+    "prestart": "node generate-public.js",
     "start": "node server.js"
   },
   "engines": {
