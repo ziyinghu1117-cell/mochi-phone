@@ -105,10 +105,12 @@ http://localhost:3000
 
 ```
 mochi-phone/
-├── server.js          # 主服务文件（含前端代码 + 32个文游剧本）
-├── package.json       # 依赖配置
-├── .env.example       # 环境变量模板
-└── README.md          # 本文件
+├── server.js                       # 主服务文件（含前端代码 + 32个文游剧本）
+├── forum-avatars-base64-data.js    # 论坛头像数据（8张原始头像，启动时自动加载）
+├── package.json                    # 依赖配置
+├── package-lock.json               # 依赖锁定
+├── .env.example                    # 环境变量模板
+└── README.md                       # 本文件
 ```
 
 ---
