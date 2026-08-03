@@ -58,6 +58,18 @@
 | `DEMO_INITIAL_BEANS` | 新用户初始米粒 | `50` |
 | `ADMIN_PASSWORD` | 管理员后台密码 | `841026` |
 | `DATABASE_URL` | PostgreSQL 连接字符串 | 空（使用本地 JSON） |
+| `EMAIL_USER` | 发送验证码的 QQ 邮箱地址 | 空（不配置则注册无需邮箱） |
+| `EMAIL_PASS` | QQ 邮箱 SMTP 授权码（非登录密码） | 空（不配置则注册无需邮箱） |
+
+### 邮箱验证码配置说明
+
+1. 登录你的 QQ 邮箱 → 设置 → 账户
+2. 开启 `POP3/IMAP/SMTP` 服务
+3. 生成 SMTP **授权码**（16位字母，不是QQ密码）
+4. 在 Render 环境变量中设置：
+   - `EMAIL_USER` = 你的QQ邮箱地址（如 `12345@qq.com`）
+   - `EMAIL_PASS` = SMTP 授权码（如 `abcdefghijklmnop`）
+5. 配置后，用户注册时需要填写邮箱并接收验证码才能完成注册
 
 ---
 
