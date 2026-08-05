@@ -2,16 +2,17 @@
   "name": "mochi-phone",
   "version": "1.0.0",
   "type": "module",
-  "main": "server.js",
+  "description": "Mochi Phone - 角色手机模拟器",
+  "main": "server_final.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server_final.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "helmet": "^7.1.0",
-    "pg": "^8.13.1",
-    "nodemailer": "^6.9.13"
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "nodemailer": "^9.0.4",
+    "pg": "^8.22.0"
   }
 }
