@@ -32,13 +32,17 @@
 ### 安装与运行
 
 ```bash
-# 1. 安装依赖
+# 1. 解压项目文件
+unzip mochi-phone-complete.zip
+cd mochi-phone
+
+# 2. 安装依赖
 npm install
 
-# 2. 启动服务
+# 3. 启动服务
 npm start
 # 或
-node server.js
+node server_final.js
 ```
 
 启动后访问 http://localhost:3000 即可使用。
@@ -60,19 +64,11 @@ EMAIL_PASS=your_password
 
 不配置任何环境变量也能正常运行，数据存储在 `.data/mochi-phone-data.json`。
 
-### Render 部署
-
-1. 将项目推送到 GitHub 仓库
-2. 在 Render 创建 Web Service，连接该仓库
-3. Build Command: `npm install`
-4. Start Command: `npm start`
-5. 部署即可
-
 ## 项目结构
 
 ```
 mochi-phone/
-├── server.js            # 主程序（前端+后端一体）
+├── server_final.js      # 主程序（前端+后端一体）
 ├── package.json         # 依赖配置
 ├── package-lock.json    # 依赖锁定
 ├── README.md            # 说明文档
