@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Mochi Phone - 角色手机模拟器",
-  "main": "server_final.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node server_final.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.6",
