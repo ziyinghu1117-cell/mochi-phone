@@ -102,6 +102,7 @@ mochi-phone/
 
 ## 版本历史
 
+- v1.0.6 (2026-08-06) - 修复查手机 HTTP 400 错误：移除 prompt 中的 base64 avatar 数据（可达20KB+导致 API 拒绝）；截断 rolePrompt 至 2000 字符；添加模型 fallback 机制（gemini-3.1-pro → gemini-2.5-pro → gemini-3-flash）；前端发送时移除 avatar 并截断 prompt
 - v1.0.5 (2026-08-06) - 修复米粒清零问题：关键操作（充值审批、查手机消耗、聊天消耗、VIP签到、文游消耗等）改为同步写入DB；SIGTERM/SIGINT 优雅退出确保数据落盘；dbSet 增加重试机制和错误日志；退款操作改为即时保存
 - v1.0.4 (2026-08-06) - 修复查手机角色信息弹窗卡住（移除简介显示）；修复米粒不足误报（x-user-id 处理优化）；优化回复速度（批量发送+减少延迟）；修复角色设定混在一起（characterId 隔离缓存）
 - v1.0.3 (2026-08-05) - 修复购物/外卖后台生成（退出后继续生成+完成提醒+错误退米粒）；修复订单卡片渲染（分隔符"|"改为"-"）；商品与分类标签匹配（分类专属mock数据+AI提示词增强）
@@ -157,6 +158,7 @@ mochi-phone/
 
 ### 已知问题修复
 
+- **查手机 HTTP 400 修复**：`buildUserPrompt` 中包含的 `roleAvatar` 可能是 20KB+ 的 base64 数据，导致发送给 AI API 的 prompt 超出限制被拒绝（HTTP 400）。移除 prompt 中的 avatar 数据，截断 rolePrompt 至 2000 字符，聊天记录截断至 3000 字符，记忆摘要截断至 1000 字符。前端发送请求时也移除 avatar 并截断 role.prompt。添加模型 fallback 机制：主模型 gemini-3.1-pro-preview 失败时自动尝试 gemini-2.5-pro 和 gemini-3-flash-preview
 - **米粒清零修复**：所有涉及米粒变动的关键操作（充值审批、查手机消耗、聊天消耗、VIP签到、文游消耗、社媒奖励发放等）改为 `saveDataSync()` 同步写入数据库，确保数据即时落盘；SIGTERM/SIGINT 信号触发优雅退出，等待数据保存完成后再退出进程；dbSet 函数增加错误重试机制和详细日志
 - **角色信息弹窗卡住修复**：角色列表页移除简介显示，简介移至角色设置页面查看，避免长文本导致弹窗内容溢出
 - **米粒不足误报修复**：优化 x-user-id 请求头处理，确保前端发送正确的登录用户 ID；session 过期时回退到 header 中的 userId，保证余额查询一致性
