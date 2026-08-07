@@ -102,6 +102,7 @@ mochi-phone/
 
 ## 版本历史
 
+- v1.0.9 (2026-08-07) - AI响应加速优化（不降活人感）：①精简系统提示词——HUMAN_LIKE_PROMPT从~80行压缩至~35行，内联规则（线上/线下模式+思维链+格式规则）从~75行压缩至~40行，保留所有核心活人感规则；②智能截断聊天历史——从最后20条减至16条（8轮对话），记忆条数从12减至8，更早的上下文由记忆摘要覆盖
 - v1.0.8 (2026-08-07) - 移除人设和世界书的所有读取/存储截断限制：prompt 字段（原 6000/3000/2000 字符截断）、description 字段（原 2000 截断）、backgroundStory 字段（原 6000 截断）共 12 处截断全部移除，实现读取无上限
 - v1.0.7 (2026-08-07) - 修复内测前阻断级bug：①社交「生成新动态」死循环刷404（连续3次404停止轮询+关闭页面时bgStopAllPolling清理）；②购物/外卖生成失败ERR_CONNECTION_CLOSED（超时60s→30s+maxTokens降至2500+多模型fallback）；③失败时米粒退还（所有错误路径调用refundBeans）；④migrateConversations初始化TDZ错误（setTimeout延迟执行）；⑤PWA资源404（添加manifest路由+移除废弃meta+内联SVG图标）
 - v1.0.6 (2026-08-06) - 修复查手机 HTTP 400 错误：移除 prompt 中的 base64 avatar 数据（可达20KB+导致 API 拒绝）；截断 rolePrompt 至 2000 字符；添加模型 fallback 机制（gemini-3.1-pro → gemini-2.5-pro → gemini-3-flash）；前端发送时移除 avatar 并截断 prompt
