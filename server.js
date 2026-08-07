@@ -132,7 +132,7 @@ const config = {
       return { amount, beans };
     })
     .filter((item) => Number.isFinite(item.amount) && Number.isFinite(item.beans)),
-  demoInitialBeans: Number(process.env.DEMO_INITIAL_BEANS || 20)
+  demoInitialBeans: Number(process.env.DEMO_INITIAL_BEANS || 50)
 };
 
 /* === 邮箱验证码配置 === */
@@ -736,11 +736,13 @@ const fail = (res, status, code, message, details = null) => res.status(status).
 
 const getUser = (userId = 'demo-user') => {
   if (!users.has(userId)) {
-    users.set(userId, { id: userId, beans: config.demoInitialBeans, createdAt: new Date().toISOString(), vipType: null, vipExpire: null, vipDailyClaimed: null, inviteCode: null, invitedBy: null, firstRechargeDone: false });
+    users.set(userId, { id: userId, beans: config.demoInitialBeans, createdAt: new Date().toISOString(), vipType: null, vipExpire: null, vipDailyClaimed: null, inviteCode: null, invitedBy: null, firstRechargeDone: false, lastCheckin: null });
     saveData();
   }
   return users.get(userId);
 };
+
+const isGuestUser = (userId) => !userId || userId === 'demo-user';
 
 /* 通过 userId 查找注册用户名 */
 const getUsername = (userId) => {
@@ -2700,6 +2702,7 @@ var sfSwitchTab = function (tab) {
 
 /* ---- data loading ---- */
 var sfLoadTab = async function (tab) {
+  if (!authToken) { alert('游客不能使用此功能，请先注册登录。'); showAuthPage(); return; }
   sfState.loading[tab] = true;
   sfState.isLoading = true;
   if (sfState.active && sfState.currentView === 'feed' && tab === sfState.currentTab) {
@@ -5548,6 +5551,7 @@ var dfSwitchPage = function (pageId) {
 
 /* ---- data loading ---- */
 var dfLoadWorks = async function (tag) {
+  if (!authToken) { alert('游客不能使用此功能，请先注册登录。'); showAuthPage(); return; }
   dfState.loading = true;
   var content = forumEl('dfHomeContent');
   if (content && (!dfState.worksCache[tag] || dfState.worksCache[tag].length === 0)) {
@@ -6179,6 +6183,7 @@ var dfHideGenLoading = function () {
 };
 
 var dfGenerateWork = async function () {
+  if (!authToken) { alert('游客不能使用此功能，请先注册登录。'); showAuthPage(); return; }
   var role = dfState.role || (typeof activeRole === 'function' ? activeRole() : null);
   dfState._generating = true;
 
@@ -6568,6 +6573,7 @@ var dfChargeBeans = function (cost) {
 };
 
 var dfSubmitContinue = async function () {
+  if (!authToken) { alert('游客不能使用此功能，请先注册登录。'); showAuthPage(); return; }
   var bm = dfState.currentBook;
   if (!bm) { dfCloseContinueModal(); return; }
   var slider = forumEl('dfContinueSlider');
@@ -10270,6 +10276,7 @@ select:focus {
               <p class="muted">加载中...</p>
             </div>
             <div id="vipPackages" class="package-grid"></div>
+            <button id="dailyCheckinBtn" type="button" style="display:none;margin-top:8px;background:linear-gradient(135deg,#FFD1DC,#FFC7D9);color:#fff;border:none;padding:8px 16px;border-radius:10px;font-size:13px;cursor:pointer">📅 每日签到领米粒（1-5随机）</button>
             <button id="vipDailyCheckinBtn" class="primary-small" type="button" style="display:none;margin-top:8px">每日签到领米粒</button>
           </div>
 
@@ -12349,6 +12356,7 @@ var wcShowPostBox = function() {
   if (box) { box.style.display = 'block'; var input = document.getElementById('wcPostInput'); if (input) input.focus(); }
 };
 var wcSubmitPost = async function() {
+  if (!authToken) { alert('游客不能使用此功能，请先注册登录。'); showAuthPage(); return; }
   var input = document.getElementById('wcPostInput');
   if (!input) return;
   var content = input.value.trim();
@@ -14488,6 +14496,24 @@ document.getElementById('vipDailyCheckinBtn')?.addEventListener('click', async (
   } catch (e) { alert('签到失败：' + (e.message || '')); }
 });
 
+/* 每日签到（所有用户） */
+const dailyCheckinBtn = document.getElementById('dailyCheckinBtn');
+if (dailyCheckinBtn) {
+  dailyCheckinBtn.onclick = async () => {
+    try {
+      const resp = await fetch('/api/user/checkin', { method: 'POST', headers: { 'x-session-token': authToken, 'Content-Type': 'application/json' } });
+      const data = await resp.json();
+      if (data.code === 0) {
+        alert('签到成功！获得' + data.data.reward + '米粒');
+        dailyCheckinBtn.style.display = 'none';
+        refreshServerUser();
+      } else {
+        alert(data.msg || '签到失败');
+      }
+    } catch (e) { alert('签到失败：' + (e.message || '')); }
+  };
+}
+
 /* 复制邀请码 */
 document.getElementById('copyInviteCodeBtn')?.addEventListener('click', async () => {
   const code = document.getElementById('myInviteCode')?.textContent || '';
@@ -15143,6 +15169,7 @@ const flushChatStreamRender = () => {
 };
 
 const replyMessage = async () => {
+  if (!authToken) { alert('游客不能使用此功能，请先注册登录。'); showAuthPage(); return; }
   if (isReplying) {
     currentAbortController?.abort();
     toast('已打断上一条回复。');
@@ -15289,6 +15316,13 @@ const doLogout = async () => {
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) logoutBtn.style.display = 'block';
     if (adminBtn && authUser.isAdmin) adminBtn.style.display = 'block';
+    /* 检查签到状态 */
+    fetch('/api/user/checkin/status', { headers: { 'x-session-token': authToken } })
+      .then(r => r.json()).then(data => {
+        if (data.code === 0 && !data.data.checkedToday && dailyCheckinBtn) {
+          dailyCheckinBtn.style.display = 'block';
+        }
+      }).catch(()=>{});
   }
   /* 只有认证检查完成后才初始化，确保 authUser 已就绪 */
   init();
@@ -16456,6 +16490,7 @@ function pcSaveAppData(appId, data, captureRoleId) {
 }
 
 function pcGenerateAppData(appId) {
+  if (!authToken) { alert('游客不能使用此功能，请先注册登录。'); showAuthPage(); return Promise.reject(new Error('游客不能使用此功能，请先注册登录。')); }
   var role = pcGetRoleById(pcState.roleId);
   if (!role) return Promise.reject(new Error('角色不存在'));
   /* 捕获发起时的角色ID，防止异步回调期间用户切换角色导致数据写错 */
@@ -18033,6 +18068,7 @@ function shopRenderOrders() {
 }
 
 var shopRefreshCategory = async function() {
+  if (!authToken) { alert('游客不能使用此功能，请先注册登录。'); showAuthPage(); return; }
   var cat = shopCurrentCat;
   if (shopBgGenerating[cat]) {
     toast('该分类正在生成中，请稍候...');
@@ -18355,6 +18391,7 @@ function foodRenderOrders() {
 }
 
 var foodRefreshCategory = async function() {
+  if (!authToken) { alert('游客不能使用此功能，请先注册登录。'); showAuthPage(); return; }
   var cat = foodCurrentCat;
   if (foodBgGenerating[cat]) {
     toast('该分类正在生成中，请稍候...');
@@ -21872,6 +21909,7 @@ const enterNovelStory = async (save) => {
 };
 
 const generateNovelRound = async (action, customAction, isRegen) => {
+  if (!authToken) { alert('游客不能使用此功能，请先注册登录。'); showAuthPage(); return; }
   const save = novelState.currentSave;
   if (!save || novelState.isLoading) return;
   novelState.isLoading = true;
@@ -23910,15 +23948,32 @@ app.get('/api/admin/stats', adminAuth, (req, res) => {
     totalRechargeCny: stats.totalRechargeCny,
     totalBeansConsumed: stats.totalBeansConsumed,
     totalChatCount: stats.totalChatCount,
-    userCount: users.size
+    userCount: users.size,
+    pendingVerifications: paymentVerifications.filter((v) => v.status === 'pending').map(v => ({
+      id: v.id, userId: v.userId, username: v.username, amount: v.amount, beans: v.beans,
+      transactionId: v.transactionId, status: v.status, createdAt: v.createdAt
+    }))
   });
 });
 
 app.get('/api/admin/users', adminAuth, (req, res) => {
+  const accountByUserId = new Map();
+  for (const acc of accounts.values()) {
+    if (acc.userId) accountByUserId.set(acc.userId, acc);
+  }
   const userList = [];
   for (const [id, user] of users) {
-    userList.push({ id: user.id, beans: user.beans, createdAt: user.createdAt });
+    const account = accountByUserId.get(id);
+    userList.push({
+      id: user.id,
+      username: account ? account.username : id,
+      beans: user.beans,
+      createdAt: user.createdAt,
+      vipType: user.vipType || null,
+      vipExpire: user.vipExpire || null
+    });
   }
+  userList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   ok(res, { list: userList });
 });
 
@@ -24250,6 +24305,26 @@ app.get('/api/invite/records', (req, res) => {
   ok(res, { records: invitedUsers.slice(0, 100) });
 });
 
+/* === 每日签到 === */
+app.post('/api/user/checkin', async (req, res) => {
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能签到，请先注册登录。');
+  const user = getUser(req.userId);
+  const todayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  if (user.lastCheckin === todayKey) return fail(res, 403, 7001, '今日已签到，请明天再来。');
+  const reward = Math.floor(Math.random() * 5) + 1; // 1-5随机
+  user.beans += reward;
+  user.lastCheckin = todayKey;
+  transactions.push({ id: randomUUID(), userId: user.id, type: 'reward', beans: reward, roleName: '每日签到', summary: '每日签到奖励', createdAt: new Date().toISOString() });
+  await saveDataSync();
+  ok(res, { beans: user.beans, reward }, '签到成功！获得' + reward + '米粒');
+});
+
+app.get('/api/user/checkin/status', (req, res) => {
+  const user = getUser(req.userId);
+  const todayKey = new Date().toISOString().slice(0, 10);
+  ok(res, { checkedToday: user.lastCheckin === todayKey, lastCheckin: user.lastCheckin || null });
+});
+
 /* === 用户文游创作工坊 API === */
 
 /* 创建剧本（草稿） */
@@ -24384,6 +24459,7 @@ app.post('/api/social-reward/submit', (req, res) => {
   const likeCount = Number(likes) || 0;
   if (likeCount < 200) return fail(res, 400, 7003, '点赞数需达到200以上才能申请奖励。');
   const user = getUser(req.userId);
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   /* 检查是否已申请过同一链接 */
   const existing = socialRewards.find(r => r.userId === user.id && r.postUrl === postUrl);
   if (existing) return fail(res, 400, 7004, '该帖子已申请过奖励。');
@@ -24594,6 +24670,7 @@ app.get('/api/community/roles', (req, res) => {
 app.post('/api/community/roles', (req, res) => {
   const { name, gender, description, prompt, avatar, coverImage, orientation, tags, backgroundStory, isPublic } = req.body || {};
   if (!name || !prompt) return fail(res, 400, 4002, '发布角色需要填写名称和人设。');
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   const userProfile = userProfiles.get(req.userId) || { nickname: '体验用户' };
   const item = publishCommunityRole({
     name,
@@ -24649,6 +24726,7 @@ app.post('/api/chat', async (req, res) => {
   if (!lastUserMessage.trim()) return fail(res, 400, 4003, '消息内容不能为空。');
 
   const user = getUser(req.userId);
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   const actualCost = applyVipDiscount(req.userId, (chatMode === 'offline') ? config.offlineChatBeansCost : config.chatBeansCost);
   if (user.beans < actualCost) return fail(res, 402, 4021, '米粒余额不足，请先充值后再继续聊天。', { beans: user.beans });
 
@@ -25037,6 +25115,7 @@ app.post('/api/app/chat', async (req, res) => {
   if (!lastUserMessage.trim()) return fail(res, 400, 4003, '消息内容不能为空。');
 
   const user = getUser(req.userId);
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   const actualCost = applyVipDiscount(req.userId, config.chatBeansCost);
   if (user.beans < actualCost) return fail(res, 402, 4021, '米粒余额不足，请先充值后再继续聊天。', { beans: user.beans });
 
@@ -25293,6 +25372,7 @@ app.post('/api/forum/generate', async (req, res) => {
   let user;
   // 消耗米粒
   user = getUser(req.userId);
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   const forumPostCost = applyVipDiscount(req.userId, 5);
   if (!user || user.beans < forumPostCost) {
     return fail(res, 403, 4003, '米粒不足，生成帖子需要' + forumPostCost + '颗米粒');
@@ -25438,6 +25518,7 @@ app.post('/api/moments/generate', async (req, res) => {
   const { content } = req.body || {};
   if (!content || !String(content).trim()) return fail(res, 400, 4001, '请输入朋友圈内容。');
   const user = getUser(req.userId);
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   const momentCost = applyVipDiscount(req.userId, 1);
   if (!user || user.beans < momentCost) {
     return fail(res, 403, 4003, '米粒不足，发表朋友圈需要' + momentCost + '颗米粒');
@@ -25978,6 +26059,7 @@ app.post('/api/forum/doujin/generate-work', async (req, res) => {
   const { background, characterName, roleName } = req.body || {};
   let user;
   user = getUser(req.userId);
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   const doujinWorkCost = applyVipDiscount(req.userId, 8);
   if (!user || user.beans < doujinWorkCost) {
     return fail(res, 403, 4003, '米粒不足，生成同人文需要' + doujinWorkCost + '颗米粒');
@@ -26146,6 +26228,7 @@ app.post('/api/forum/doujin/generate', async (req, res) => {
   const { background, tag } = req.body || {};
   let user;
   user = getUser(req.userId);
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   const doujinListCost = applyVipDiscount(req.userId, 8);
   if (!user || user.beans < doujinListCost) {
     return fail(res, 403, 4003, '米粒不足，生成同人文需要' + doujinListCost + '颗米粒');
@@ -26263,6 +26346,7 @@ app.post('/api/forum/doujin/continue', async (req, res) => {
 
   /* 扣米粒：续写每章消耗5豆 */
   const user = getUser(req.userId);
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   const totalCost = count * 5;
   if (!user || user.beans < totalCost) {
     return fail(res, 403, 4003, '米粒不足，续写需要' + totalCost + '颗米粒');
@@ -32893,6 +32977,7 @@ app.post('/api/novel-games/action', async (req, res) => {
   const baseCost = wordMode === 'short' ? 1 : (wordMode === 'long' ? 3 : 2);
   const gameBeansCost = applyVipDiscount(req.userId, baseCost);
   const user = getUser(req.userId);
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   if (!user || user.beans < gameBeansCost) {
     return fail(res, 403, 4003, '米粒不足，文游每轮需要' + gameBeansCost + '颗米粒');
   }
@@ -34556,6 +34641,7 @@ app.post('/api/phone-check/:roleId/:appId/generate', async (req, res) => {
 
     // 扣除米粒
     const user = getUser(userId);
+    if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
     const pcCost = PHONE_CHECK_BEAN_COST;
     console.log(`[phone-check] 米粒检查: userId=${userId}, beans=${user.beans}, cost=${pcCost}`);
     if (user.beans < pcCost) {
@@ -34970,6 +35056,7 @@ app.post('/api/shop/generate', async (req, res) => {
   const cat = validCategories.includes(category) ? category : '推荐';
 
   let user = getUser(req.userId);
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   const cost = applyVipDiscount(req.userId, 1);
   if (!user || user.beans < cost) {
     return fail(res, 403, 4003, '米粒不足，生成商品需要' + cost + '颗米粒');
@@ -35083,6 +35170,7 @@ app.post('/api/food/generate', async (req, res) => {
   const cat = validCategories.includes(category) ? category : '推荐';
 
   let user = getUser(req.userId);
+  if (isGuestUser(req.userId)) return fail(res, 403, 4030, '游客不能使用此功能，请先注册登录。');
   const cost = applyVipDiscount(req.userId, 1);
   if (!user || user.beans < cost) {
     return fail(res, 403, 4003, '米粒不足，生成美食需要' + cost + '颗米粒');
