@@ -1,0 +1,39 @@
+# Render Blueprint - Mochi Phone 一键部署配置
+# 使用方法：在 Render Dashboard 点 "New" → "Blueprint" → 选这个仓库即可
+services:
+  - type: web
+    name: mochi-phone
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # 必填：Supabase 数据库连接串
+      - key: DATABASE_URL
+        sync: false
+      # AI API（有默认值，可不改）
+      - key: UPSTREAM_API_KEY
+        value: sk-Ub4pWSpUqQfVTAGSwZoqtkj3xmubr3DW56Q938aBrZWQRY3b
+      - key: UPSTREAM_BASE_URL
+        value: https://us.novaiapi.com/v1
+      - key: UPSTREAM_MODEL
+        value: '[次-流抗截]gemini-3.1-pro-preview'
+      # 管理后台密码
+      - key: ADMIN_PASSWORD
+        value: '841026'
+      # 米粒配置（有默认值）
+      - key: CHAT_BEANS_COST
+        value: '2'
+      - key: OFFLINE_CHAT_BEANS_COST
+        value: '3'
+      - key: DEMO_INITIAL_BEANS
+        value: '20'
+      # 邮件服务（选填）
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
