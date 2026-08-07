@@ -1,6 +1,6 @@
 {
   "name": "mochi-phone",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "type": "module",
   "description": "Mochi Phone - 角色手机模拟器",
   "main": "server.js",
