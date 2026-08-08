@@ -10463,6 +10463,16 @@ select:focus {
             </div>
           </div>
           <div class="panel">
+            <h3>AI时间感知</h3>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+              <input id="rsTimeAwareToggle" type="checkbox" style="width:18px;height:18px;cursor:pointer" />
+              <div>
+                <span style="font-size:14px;font-weight:600">开启时间感知</span>
+                <p class="muted" style="font-size:12px;margin-top:2px">AI会感知当前时间、星期、季节和聊天间隔，自然地带入时段问候和话题（如深夜关心、周末调侃、节日祝福）</p>
+              </div>
+            </label>
+          </div>
+          <div class="panel">
             <h3>生成参数</h3>
             <label style="display:block;margin-bottom:8px">
               <span style="font-size:14px">温度（Temperature）</span>
@@ -15258,6 +15268,7 @@ const replyMessage = async () => {
       temperature: role.temperature != null ? role.temperature : 0.85,
       offlineMinLen: role.offlineMinLen || 100,
       offlineMaxLen: role.offlineMaxLen || 300,
+      timeAware: !!role.timeAware,
       sourceMessageIds: [lastUserMessage.id],
       messages: validMessages.map((item) => ({ role: item.role, content: item.content }))
     }, {
@@ -15518,6 +15529,8 @@ var openRoleSettingPage = function(roleId) {
   var maxLen = document.getElementById('rsOfflineMaxLen');
   if (minLen) { minLen.value = role.offlineMinLen || 100; }
   if (maxLen) { maxLen.value = role.offlineMaxLen || 300; }
+  var timeAwareToggle = document.getElementById('rsTimeAwareToggle');
+  if (timeAwareToggle) { timeAwareToggle.checked = !!role.timeAware; }
   $$('.page').forEach(function(page) { page.classList.toggle('active', page.id === 'roleSettingPage'); });
   $$('.bottom-nav button').forEach(function(item) { item.classList.remove('active'); });
   $('#pageTitle').textContent = '\u89d2\u8272\u8bbe\u7f6e';
@@ -15605,6 +15618,8 @@ var saveRoleSettings = function() {
   var maxLenInput = document.getElementById('rsOfflineMaxLen');
   if (minLenInput) { role.offlineMinLen = parseInt(minLenInput.value, 10) || 100; }
   if (maxLenInput) { role.offlineMaxLen = parseInt(maxLenInput.value, 10) || 300; }
+  var timeAwareToggle = document.getElementById('rsTimeAwareToggle');
+  if (timeAwareToggle) { role.timeAware = timeAwareToggle.checked; }
   role.worldbookIds = role.worldbookIds || [];
   var checkboxes = document.querySelectorAll('#rsWorldbookList input[type=checkbox]');
   var newIds = [];
@@ -24804,6 +24819,61 @@ app.put('/api/community/roles/:id', (req, res) => {
   ok(res, role, '人设已更新');
 });
 
+/* === AI时间感知：构建时间上下文 === */
+const buildTimeContext = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+  const weekday = weekdays[now.getDay()];
+
+  /* 时段描述 */
+  let timeOfDay;
+  if (hours < 5) timeOfDay = '凌晨';
+  else if (hours < 8) timeOfDay = '清晨';
+  else if (hours < 11) timeOfDay = '上午';
+  else if (hours < 13) timeOfDay = '中午';
+  else if (hours < 17) timeOfDay = '下午';
+  else if (hours < 19) timeOfDay = '傍晚';
+  else if (hours < 23) timeOfDay = '夜晚';
+  else timeOfDay = '深夜';
+
+  /* 季节 */
+  let season;
+  if (month <= 2 || month === 12) season = '冬季';
+  else if (month <= 5) season = '春季';
+  else if (month <= 8) season = '夏季';
+  else season = '秋季';
+
+  /* 节日感知 */
+  const md = month * 100 + day;
+  let festival = '';
+  if (md === 101) festival = '今天是元旦';
+  else if (md === 214) festival = '今天是情人节';
+  else if (md === 501) festival = '今天是劳动节';
+  else if (md === 1001) festival = '今天是国庆节';
+  else if (md === 1224 || md === 1225) festival = '今天是平安夜/圣诞节';
+  else if (md === 1231) festival = '今天是除夕前夜（跨年夜）';
+  /* 农历节日需要硬编码年份，这里放常见公历节日即可 */
+
+  /* 是否周末 */
+  const isWeekend = (now.getDay() === 0 || now.getDay() === 6);
+  const weekendNote = isWeekend ? '今天是周末' : '今天是工作日';
+
+  const timeStr = String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+
+  let ctx = `【当前时间上下文】
+现在是 ${year}年${month}月${day}日 星期${weekday} ${timeStr}，${timeOfDay}。
+${weekendNote}，正值${season}。`;
+  if (festival) ctx += '\n' + festival + '，可以自然地提及。';
+  ctx += '\n请根据当前时段自然地调整说话方式和话题，但不要生硬地报时间。深夜/凌晨可以表达关心（"这么晚还没睡？"），饭点可以聊吃的，周末可以更放松。不要每句都提时间，自然融入即可。';
+
+  return ctx;
+};
+
 app.delete('/api/community/roles/:id', (req, res) => {
   const roleId = req.params.id;
   const index = communityRoles.findIndex((r) => r.id === roleId && r.ownerId === req.userId);
@@ -24814,7 +24884,7 @@ app.delete('/api/community/roles/:id', (req, res) => {
 });
 
 app.post('/api/chat', async (req, res) => {
-  const { roleId, roleName, rolePrompt, messages, sourceMessageIds, chatMode, temperature, offlineMinLen, offlineMaxLen } = req.body || {};
+  const { roleId, roleName, rolePrompt, messages, sourceMessageIds, chatMode, temperature, offlineMinLen, offlineMaxLen, timeAware } = req.body || {};
   const normalizedMessages = Array.isArray(messages) ? messages.slice(-16) : [];
   const lastUserMessage = [...normalizedMessages].reverse().find((item) => item.role === 'user')?.content || '';
   const activeRoleId = String(roleId || roleName || 'default-role').slice(0, 80);
@@ -24835,6 +24905,8 @@ app.post('/api/chat', async (req, res) => {
   /* 读取用户人设及人设关系，注入到 system message */
   const userProfile = userProfiles.get(req.userId) || { nickname: '体验用户', bio: '', relations: '' };
   var personaBlock = '';
+  /* AI时间感知：如果角色开启了时间感知，注入时间上下文 */
+  const timeAwareBlock = timeAware ? '\n' + buildTimeContext() : '';
   if (userProfile.bio && userProfile.bio.trim()) {
     personaBlock = '\n\n【用户人设】\n用户昵称：' + (userProfile.nickname || '体验用户') + '\n用户人设：' + userProfile.bio;
   }
@@ -24875,7 +24947,7 @@ writeSse(res, 'done', { beans: user.beans });
         max_tokens: dynamicMaxTokens,
         temperature: temperature != null ? temperature : 0.85,
         messages: [
-          { role: 'system', content: `${rolePrompt || `你正在扮演${roleName || 'AI角色'}，请保持角色一致。`}${personaBlock}${buildMemoryPrompt(user.id, activeRoleId)}${HUMAN_LIKE_PROMPT}
+          { role: 'system', content: `${rolePrompt || `你正在扮演${roleName || 'AI角色'}，请保持角色一致。`}${personaBlock}${buildMemoryPrompt(user.id, activeRoleId)}${HUMAN_LIKE_PROMPT}${timeAwareBlock}
 
 ` + (chatMode === 'offline' ? `
 【Miya 聊天引擎·线下模式规则·必读】
@@ -24982,7 +25054,7 @@ writeSse(res, 'done', { beans: user.beans });
             max_tokens: dynamicMaxTokens,
             temperature: temperature != null ? temperature : 0.85,
             messages: [
-              { role: 'system', content: `${rolePrompt || `你正在扮演${roleName || 'AI角色'}，请保持角色一致。`}${personaBlock}${buildMemoryPrompt(user.id, activeRoleId)}${HUMAN_LIKE_PROMPT}` },
+              { role: 'system', content: `${rolePrompt || `你正在扮演${roleName || 'AI角色'}，请保持角色一致。`}${personaBlock}${buildMemoryPrompt(user.id, activeRoleId)}${HUMAN_LIKE_PROMPT}${timeAwareBlock}` },
               ...normalizedMessages.map((item) => {
                 const raw = String(item.content || '');
                 if (raw.startsWith('图片-')) {
@@ -25099,7 +25171,7 @@ writeSse(res, 'done', { beans: user.beans });
             max_tokens: dynamicMaxTokens,
             temperature: temperature != null ? temperature : 0.85,
             messages: [
-              { role: 'system', content: `${rolePrompt || `你正在扮演${roleName || 'AI角色'}，请保持角色一致。`}${personaBlock}${buildMemoryPrompt(user.id, activeRoleId)}${HUMAN_LIKE_PROMPT}` },
+              { role: 'system', content: `${rolePrompt || `你正在扮演${roleName || 'AI角色'}，请保持角色一致。`}${personaBlock}${buildMemoryPrompt(user.id, activeRoleId)}${HUMAN_LIKE_PROMPT}${timeAwareBlock}` },
               ...normalizedMessages.map((item) => {
                 const raw = String(item.content || '');
                 if (raw.startsWith('图片-')) {
