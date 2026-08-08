@@ -23816,11 +23816,11 @@ app.use((req, res, next) => {
       var ext = path.extname(reqPath).toLowerCase();
       var types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml' };
       if (ext === '.js' || ext === '.css') {
-        res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate');
+        res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
       } else if (ext === '.png' || ext === '.jpg' || ext === '.svg' || ext === '.gif' || ext === '.webp') {
         res.setHeader('Cache-Control', 'public, max-age=2592000, immutable');
       } else if (ext === '.html') {
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Cache-Control', 'public, max-age=300');
       }
       res.setHeader('Content-Type', types[ext] || 'application/octet-stream');
       return res.send(embedVal);
@@ -23833,6 +23833,7 @@ app.get('/', (_req, res) => {
   var html = EMBED_PUBLIC['index.html'];
   if (html) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=300');
     if (process.env.AVATAR_BASE_URL) {
       html = html.replace('</head>', '<script>window.AVATAR_BASE_URL=' + JSON.stringify(process.env.AVATAR_BASE_URL) + ';</script></head>');
     }
