@@ -555,7 +555,9 @@ const loadData = () => {
           vipDailyClaimed: user.vipDailyClaimed || null,
           inviteCode: user.inviteCode || null,
           invitedBy: user.invitedBy || null,
-          firstRechargeDone: user.firstRechargeDone || false
+          firstRechargeDone: user.firstRechargeDone || false,
+          username: user.username || null,
+          lastCheckin: user.lastCheckin || null
         });
       }
     }
@@ -646,7 +648,9 @@ const initAndLoadData = async () => {
               vipDailyClaimed: user.vipDailyClaimed || null,
               inviteCode: user.inviteCode || null,
               invitedBy: user.invitedBy || null,
-              firstRechargeDone: user.firstRechargeDone || false
+              firstRechargeDone: user.firstRechargeDone || false,
+              username: user.username || null,
+              lastCheckin: user.lastCheckin || null
             });
           }
         }
@@ -1589,6 +1593,7 @@ app.post('/api/auth/register', (req, res) => {
   getUser(userId);
   /* 邀请码绑定 */
   const user = getUser(userId);
+  user.username = username;  /* 冗余存储用户名到user记录，防止accounts丢失后管理员无法看到用户名 */
   user.inviteCode = generateInviteCode(userId);
   if (inviteCode) {
     for (const u of users.values()) {
@@ -24012,10 +24017,11 @@ app.get('/api/admin/users', adminAuth, (req, res) => {
   }
   const userList = [];
   for (const [id, user] of users) {
+    if (id === 'demo-user') continue;  /* 跳过游客占位 */
     const account = accountByUserId.get(id);
     userList.push({
       id: user.id,
-      username: account ? account.username : id,
+      username: account ? account.username : (user.username || id),
       beans: user.beans,
       createdAt: user.createdAt,
       vipType: user.vipType || null,
@@ -24024,6 +24030,31 @@ app.get('/api/admin/users', adminAuth, (req, res) => {
   }
   userList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   ok(res, { list: userList });
+});
+
+/* === 清空所有用户数据 === */
+app.post('/api/admin/reset-data', adminAuth, (req, res) => {
+  users.clear();
+  accounts.clear();
+  sessions.clear();
+  transactions.length = 0;
+  userMemories.clear();
+  userProfiles.clear();
+  directMessages.clear();
+  novelGameSaves.clear();
+  paymentVerifications.length = 0;
+  socialRewards.length = 0;
+  userNovelScripts.length = 0;
+  forumProfiles = {};
+  appStateStore.clear();
+  bgTasks.clear();
+  /* 重置统计 */
+  stats.totalRechargeCny = 0;
+  stats.totalBeansConsumed = 0;
+  stats.totalChatCount = 0;
+  /* 保留 communityRoles 和 communityApps */
+  saveDataNow();
+  ok(res, { cleared: true }, '所有用户数据已清空，人设和应用商店数据已保留。');
 });
 
 /* === 管理员上传官方人设 === */
@@ -33360,6 +33391,11 @@ tr:hover td{background:#fafbfc}
 <button class="btn-approve" onclick="showAppUploader()">+ 上传APP</button>
 <div id="adminAppsList" style="margin-top:12px"></div>
 </div>
+<div class="panel" style="border:2px solid #E8A0A0">
+<h2 style="color:#E8A0A0">⚠ 危险操作</h2>
+<p style="color:#999;font-size:13px;margin-bottom:12px">清空所有用户数据（用户账户/米粒/聊天记录/交易/签到等），人设和应用商店数据保留。此操作不可撤销！</p>
+<button style="background:#E8A0A0;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;cursor:pointer" onclick="resetAllUserData()">清空所有用户数据</button>
+</div>
 </div>
 </div>
 <div id="detailModal" class="modal-overlay">
@@ -34072,6 +34108,20 @@ async function quickAction(id, action) {
       loadDashboard();
     } else {
       showToast(res.message, 'error');
+    }
+  } catch(e) { showToast('操作失败', 'error'); }
+}
+
+async function resetAllUserData() {
+  if (!confirm('确定要清空所有用户数据吗？\n\n这将删除：\n- 所有用户账户和米粒\n- 所有聊天记录和记忆\n- 所有交易记录\n- 所有签到数据\n\n保留：官方人设、应用商店\n\n此操作不可撤销！')) return;
+  if (!confirm('再次确认：真的要清空全部用户数据吗？')) return;
+  try {
+    const res = await apiRequest('/admin/reset-data', { method: 'POST' });
+    if (res.code === 0) {
+      showToast('所有用户数据已清空');
+      loadDashboard();
+    } else {
+      showToast(res.message || '操作失败', 'error');
     }
   } catch(e) { showToast('操作失败', 'error'); }
 }
