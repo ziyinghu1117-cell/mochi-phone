@@ -1609,7 +1609,7 @@ app.post('/api/auth/register', (req, res) => {
       }
     }
   }
-  saveDataNow();  /* Use immediate save for registration to prevent data loss */
+  saveDataSync().catch((e) => console.error('[Register] 同步保存失败:', e.message));  /* 同步保存，防止重启丢失accounts */
   ok(res, { token, userId, username, inviteCode: user.inviteCode }, '注册成功');
 });
 
