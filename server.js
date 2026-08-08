@@ -16864,21 +16864,18 @@ function pcOpenApp(appId) {
     return;
   }
 
+  /* 尝试从服务端加载已生成的数据（不触发生成） */
   pcShowLoading('正在加载' + app.label + '...');
   pcLoadAppData(appId).then(function(data) {
     if (data) {
       pcSetAppData(appId, data);
       pcRenderApp(appId, data);
     } else {
-      /* 开始后台生成，用户可以退出 */
-      pcShowLoading('正在生成' + app.label + '内容...（消耗2米粒，可退出等待）');
-      pcGenerateBackground(appId).then(function(genData) {
-        if (pcState.currentApp === appId) {
-          pcRenderApp(appId, genData);
-        }
-      }).catch(function() {
-        /* 错误已在background中处理 */
-      });
+      /* 无数据时不自动生成，显示生成按钮让用户手动点击 */
+      var el = document.getElementById('pcViewerContent');
+      if (el) {
+        el.innerHTML = '<div class="pc-empty"><div class="pc-empty-icon">' + app.icon + '</div><p>' + app.label + '内容尚未生成</p><button class="pc-gen-btn" onclick="pcRefreshApp()" type="button" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:10px 28px;border-radius:12px;font-size:15px;cursor:pointer;font-weight:600">生成内容（消耗2米粒）</button></div>';
+      }
     }
   }).catch(function(err) {
     pcShowError(err.message || '加载失败，请重试');
@@ -17888,7 +17885,9 @@ function openShopApp() {
     shopCurrentProducts = cached;
     shopRenderProducts();
   } else {
-    shopRefreshCategory();
+    /* 不自动生成，显示空状态提示用户点击刷新 */
+    shopCurrentProducts = [];
+    shopRenderProducts();
   }
 }
 
@@ -17922,9 +17921,9 @@ function shopSwitchCategory(cat) {
     shopCurrentProducts = cached;
     shopRenderProducts();
   } else {
+    /* 不自动生成，显示空状态提示用户点击刷新 */
     shopCurrentProducts = [];
     shopRenderProducts();
-    shopRefreshCategory();
   }
 }
 
@@ -18205,7 +18204,9 @@ function openFoodApp() {
     foodCurrentItems = cached;
     foodRenderItems();
   } else {
-    foodRefreshCategory();
+    /* 不自动生成，显示空状态提示用户点击刷新 */
+    foodCurrentItems = [];
+    foodRenderItems();
   }
 }
 
@@ -18239,9 +18240,9 @@ function foodSwitchCategory(cat) {
     foodCurrentItems = cached;
     foodRenderItems();
   } else {
+    /* 不自动生成，显示空状态提示用户点击刷新 */
     foodCurrentItems = [];
     foodRenderItems();
-    foodRefreshCategory();
   }
 }
 

@@ -102,6 +102,7 @@ mochi-phone/
 
 ## 版本历史
 
+- v1.1.9 (2026-08-08) - 修复购物/外卖/查手机进入即自动扣费生成：①购物App——打开或切换分类时无缓存不再自动调shopRefreshCategory扣1米粒，改为显示"暂无商品，点击刷新生成"让用户手动点击；②外卖App——同上，openFoodApp和foodSwitchCategory不再自动调foodRefreshCategory；③查手机App——pcOpenApp无缓存数据时不再自动调pcGenerateBackground扣2米粒，改为显示"生成内容（消耗2米粒）"按钮让用户手动点击
 - v1.1.8 (2026-08-08) - 修复管理员后台用户数统计与列表不一致：stats接口的userCount直接用了users.size（包含游客残留记录），而用户列表接口已过滤游客记录，导致统计卡片显示的数字大于实际列表人数。修复：stats接口的userCount也用相同逻辑过滤游客残留记录
 - v1.1.7 (2026-08-08) - 修复管理员后台用户数翻倍显示：用户首次打开页面时前端会自动生成游客userId并写入users表，注册后又会生成正式userId写入users表，导致同一个人在users表有两条记录。修复：管理员用户列表接口跳过没有关联account且无username字段的游客残留记录，只显示真正注册的用户
 - v1.1.6 (2026-08-08) - 修复新注册用户在管理员后台显示系统ID而非用户名：注册时saveDataNow改为saveDataSync同步落盘，防止服务重启后accounts数据丢失导致管理员后台无法匹配用户名（之前用saveDataNow异步写入，若注册后服务重启则accounts未落盘丢失，管理员后台只能显示user_xxx系统ID）
