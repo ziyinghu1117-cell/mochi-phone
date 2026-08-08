@@ -24019,6 +24019,8 @@ app.get('/api/admin/users', adminAuth, (req, res) => {
   for (const [id, user] of users) {
     if (id === 'demo-user') continue;  /* 跳过游客占位 */
     const account = accountByUserId.get(id);
+    /* 跳过没有关联account且无用户名的游客残留记录 */
+    if (!account && !user.username) continue;
     userList.push({
       id: user.id,
       username: account ? account.username : (user.username || id),
