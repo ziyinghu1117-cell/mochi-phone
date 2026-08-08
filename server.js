@@ -23994,6 +23994,18 @@ app.get('/api/admin/verifications', adminAuth, (req, res) => {
 });
 
 app.get('/api/admin/stats', adminAuth, (req, res) => {
+  /* 统计真实注册用户数（排除游客残留记录） */
+  const accountByUserId = new Map();
+  for (const acc of accounts.values()) {
+    if (acc.userId) accountByUserId.set(acc.userId, acc);
+  }
+  let realUserCount = 0;
+  for (const [id, user] of users) {
+    if (id === 'demo-user') continue;
+    const account = accountByUserId.get(id);
+    if (!account && !user.username) continue;
+    realUserCount++;
+  }
   ok(res, {
     totalVerifications: paymentVerifications.length,
     pendingCount: paymentVerifications.filter((v) => v.status === 'pending').length,
@@ -24002,7 +24014,7 @@ app.get('/api/admin/stats', adminAuth, (req, res) => {
     totalRechargeCny: stats.totalRechargeCny,
     totalBeansConsumed: stats.totalBeansConsumed,
     totalChatCount: stats.totalChatCount,
-    userCount: users.size,
+    userCount: realUserCount,
     pendingVerifications: paymentVerifications.filter((v) => v.status === 'pending').map(v => ({
       id: v.id, userId: v.userId, username: v.username, amount: v.amount, beans: v.beans,
       transactionId: v.transactionId, status: v.status, createdAt: v.createdAt
