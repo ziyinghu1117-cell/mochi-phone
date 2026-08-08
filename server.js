@@ -34113,7 +34113,7 @@ async function quickAction(id, action) {
 }
 
 async function resetAllUserData() {
-  if (!confirm('确定要清空所有用户数据吗？\n\n这将删除：\n- 所有用户账户和米粒\n- 所有聊天记录和记忆\n- 所有交易记录\n- 所有签到数据\n\n保留：官方人设、应用商店\n\n此操作不可撤销！')) return;
+  if (!confirm('确定要清空所有用户数据吗？\\n\\n这将删除：\\n- 所有用户账户和米粒\\n- 所有聊天记录和记忆\\n- 所有交易记录\\n- 所有签到数据\\n\\n保留：官方人设、应用商店\\n\\n此操作不可撤销！')) return;
   if (!confirm('再次确认：真的要清空全部用户数据吗？')) return;
   try {
     const res = await apiRequest('/admin/reset-data', { method: 'POST' });

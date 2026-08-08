@@ -102,6 +102,7 @@ mochi-phone/
 
 ## 版本历史
 
+- v1.1.5 (2026-08-08) - 修复管理员后台登录点击无反应：resetAllUserData函数中confirm弹窗的多行文本在模板字符串内使用\n，被模板字符串解释为实际换行符，导致浏览器接收到的单引号JS字符串包含物理换行，触发SyntaxError使整个admin页面的<script>块无法解析，所有按钮（包括登录）均无响应。修复：将\n改为\\n确保浏览器收到正确的转义序列
 - v1.1.4 (2026-08-08) - 体验修复：①签到入口移至手机桌面widget（顶部栏签到按钮保留，手机桌面新增签到卡片，三处签到状态同步）；②修复管理员后台用户列表不显示——loadDashboard中loadAdminUsers等函数从try-catch内移出独立调用，避免stats/verifications接口异常时阻断用户列表加载；③管理员后台人设管理增强错误提示（API失败时显示具体错误信息而非静默失败）；④带宽优化全部保留（gzip压缩+静态资源缓存+trust proxy不变）
 - v1.1.3 (2026-08-08) - 用户体系增强：①游客限制——游客可浏览但不可使用消耗米粒的功能（聊天/查手机/文游/社交/同人/购物外卖/上传人设），需注册登录；②注册默认米粒从20提升至50；③每日签到——所有注册用户每日可签到领取1-5随机米粒；④管理员后台增强——账户列表显示用户名/米粒/VIP状态并按注册时间倒序排列，stats接口返回待审核充值明细
 - v1.1.2 (2026-08-07) - 带宽优化（解决Render 5GB超限暂停）：①移除8张头像base64内嵌（server.js从13.5MB降至2.4MB），改为独立PNG文件+30天浏览器缓存；②移除forum-avatars-base64.js（11MB base64数据URL），改为按需加载头像URL；③添加gzip压缩（index.html 784KB→216KB，省72%）；④添加静态资源缓存策略（图片30天immutable/JS 1小时/HTML no-cache）；⑤添加trust proxy支持Cloudflare；⑥支持AVATAR_BASE_URL环境变量指向Supabase Storage/CDN
